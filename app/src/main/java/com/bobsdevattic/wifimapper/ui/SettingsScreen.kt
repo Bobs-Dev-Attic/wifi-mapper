@@ -2,6 +2,7 @@ package com.bobsdevattic.wifimapper.ui
 
 import android.os.Build
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -9,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,7 +31,7 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onOpenPermissions: () -> Unit) {
     val settings = (LocalContext.current.applicationContext as WifiMapperApp).settings
     val themeMode by settings.themeMode.collectAsStateWithLifecycle()
     val dynamic by settings.dynamicColor.collectAsStateWithLifecycle()
@@ -53,6 +55,15 @@ fun SettingsScreen(onBack: () -> Unit) {
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                ListItem(
+                    leadingContent = { Icon(Icons.Default.VerifiedUser, null) },
+                    headlineContent = { Text("Check permissions") },
+                    supportingContent = { Text("Confirm what the app is allowed to use, and fix anything missing") },
+                    modifier = Modifier.clickable(onClick = onOpenPermissions),
+                )
+            }
+
             SectionTitle("App theme")
             ThemeMode.entries.forEach { m ->
                 RadioRow(selected = themeMode == m, onClick = { settings.setThemeMode(m) }) { Text(m.label) }
@@ -98,7 +109,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                 RadioRow(selected = radarStyle == st, onClick = { settings.setRadarStyle(st) }) { Text(st.label) }
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Ping sound", Modifier.weight(1f))
+                Column(Modifier.weight(1f)) {
+                    Text("Tracker sounds")
+                    Text("Ping as the wave goes out, bleep when it reaches the target (higher = closer)",
+                        style = MaterialTheme.typography.bodySmall)
+                }
                 Switch(checked = pingSound, onCheckedChange = settings::setPingSound)
             }
 
@@ -115,8 +130,21 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             SectionTitle("About")
-            Text("WiFi Mapper v${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})")
+            Text("WiFi Mapper", style = MaterialTheme.typography.titleLarge)
+            Text("Version ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
+                style = MaterialTheme.typography.bodyLarge)
             Text("Updates are checked automatically on launch.", style = MaterialTheme.typography.bodySmall)
+            val ctx = LocalContext.current
+            OutlinedButton(onClick = {
+                runCatching {
+                    ctx.startActivity(
+                        android.content.Intent(
+                            android.content.Intent.ACTION_VIEW,
+                            android.net.Uri.parse("https://github.com/${BuildConfig.UPDATE_REPO}/blob/main/CHANGELOG.md"),
+                        )
+                    )
+                }
+            }) { Text("View changelog") }
             Spacer(Modifier.height(24.dp))
         }
     }

@@ -1,7 +1,5 @@
 package com.bobsdevattic.wifimapper.ui
 
-import android.media.AudioManager
-import android.media.ToneGenerator
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -12,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,10 +32,11 @@ import androidx.compose.ui.unit.sp
 import com.bobsdevattic.wifimapper.model.CompassMath
 import com.bobsdevattic.wifimapper.model.RadarAccumulator
 import com.bobsdevattic.wifimapper.model.SignalDetails
+import com.bobsdevattic.wifimapper.model.TrackerMath
+import com.bobsdevattic.wifimapper.radar.TrackerAudio
 import com.bobsdevattic.wifimapper.radar.RadarViewModel
 import kotlin.math.abs
 import kotlin.math.cos
-import kotlin.math.log10
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -50,13 +50,9 @@ private val RangeRed = Color(0xFFFF3B2F)
 
 /** Range rings (metres) and the log scale that places them. */
 private val RINGS = listOf(1.0, 3.0, 10.0, 30.0)
-private const val MIN_M = 0.5
-private const val MAX_M = 40.0
 
-private fun radiusFor(distanceM: Double, maxR: Float): Float {
-    val t = (log10(distanceM.coerceIn(MIN_M, MAX_M)) - log10(MIN_M)) / (log10(MAX_M) - log10(MIN_M))
-    return (0.14f + 0.86f * t.toFloat()) * maxR       // inner 14% is the emitter
-}
+private fun radiusFor(distanceM: Double, maxR: Float): Float =
+    (0.14f + 0.86f * TrackerMath.rangeFraction(distanceM)) * maxR   // inner 14% is the emitter
 
 /**
  * Forward-facing "motion tracker" radar: the fan shows the 180° in front of you.
@@ -72,14 +68,28 @@ fun TrackerRadar(
     // Ping wave 0→1, restarted each cycle; cadence follows proximity.
     val pulse = remember { Animatable(0f) }
     val latest by rememberUpdatedState(ui)
-    val tone = remember { runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 55) }.getOrNull() }
-    DisposableEffect(tone) { onDispose { tone?.release() } }
+    val audio = remember { TrackerAudio.create() }
+    DisposableEffect(audio) { onDispose { audio?.release() } }
     LaunchedEffect(pingSound) {
         while (true) {
             pulse.snapTo(0f)
-            if (pingSound && latest.rssi != null) tone?.startTone(ToneGenerator.TONE_PROP_BEEP2, 45)
+            if (pingSound && latest.rssi != null) audio?.ping()
             val period = (2200 - latest.proximity * latest.proximity * (2200 - 450)).toInt()
             pulse.animateTo(1f, tween(durationMillis = period, easing = LinearEasing))
+        }
+    }
+
+    // Return bleep: fires once per sweep, the moment the wave reaches the target's
+    // range. The wave's progress and the blip's radius share the same log scale.
+    LaunchedEffect(pingSound) {
+        var prev = 0f
+        snapshotFlow { pulse.value }.collect { now ->
+            val range = latest.distanceRange
+            if (pingSound && range != null && latest.rssi != null) {
+                val target = TrackerMath.rangeFraction(sqrt(range.first * range.second))
+                if (TrackerMath.crossed(prev, now, target)) audio?.blip(latest.proximity)
+            }
+            prev = now
         }
     }
 

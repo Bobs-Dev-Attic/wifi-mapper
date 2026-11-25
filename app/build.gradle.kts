@@ -15,8 +15,8 @@ android {
         targetSdk = 35
         // Version is overridable from CI (release workflow passes the git tag):
         //   ./gradlew assembleRelease -PappVersionName=0.2.0 -PappVersionCode=200
-        versionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 10
-        versionName = (project.findProperty("appVersionName") as String?) ?: "0.9.1"
+        versionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 11
+        versionName = (project.findProperty("appVersionName") as String?) ?: "0.10.0"
 
         // GitHub repo the in-app updater checks for new releases.
         buildConfigField("String", "UPDATE_REPO", "\"Bobs-Dev-Attic/wifi-mapper\"")

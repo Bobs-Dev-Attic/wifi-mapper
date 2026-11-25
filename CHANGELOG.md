@@ -7,6 +7,27 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-25
+### Added
+- **Tracker return bleep.** Besides the outgoing ping, the tracker now bleeps the
+  moment the expanding wave reaches the target blip, like the film tracker. The
+  bleep's **pitch rises as you get closer** (~0.9 → 2 kHz), so you can home in by
+  ear. Tones are synthesised (click-free envelope) and played on a background
+  audio stream. The radar's "Sound" chip / Settings toggle controls both.
+- **Check permissions** page (Settings → Check permissions): status and purpose of
+  each runtime permission for this Android version (location, nearby Wi-Fi,
+  camera, Bluetooth scan/connect), system switches that silently break features
+  (Location services, Wi-Fi, Bluetooth, install-updates), and hardware (ARCore,
+  compass, barometer), with a one-tap fix for each, "Grant missing", "Open app
+  settings", and an "All set" / "N need attention" summary. Refreshes on return.
+- Settings → About shows the version and build, with a **View changelog** link.
+
+### Changed
+- The version badge moved from the home screen (and the capture / 3D view bars)
+  to Settings → About.
+- Unit tests: tone synthesis (length, silent edges, pitch), wave-crossing
+  detection, bleep pitch, permission catalogue per Android version.
+
 ## [0.9.1] - 2026-11-25
 ### Changed
 - **Tracker radar grid now rotates with your compass heading.** Spokes (every 30°),
@@ -206,7 +227,8 @@ All notable changes to WiFi Mapper are documented here. The format follows
 - Device tuning notes for the Samsung Galaxy S25 Edge (ARCore + Depth, barometer,
   Wi-Fi 7 / 6 GHz, One UI 7 dynamic colour).
 
-[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.10.0
 [0.9.1]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.9.1
 [0.9.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.9.0
 [0.8.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.8.0
