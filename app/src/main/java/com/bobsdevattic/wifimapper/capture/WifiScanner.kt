@@ -5,7 +5,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
+import android.os.Build
+import android.os.SystemClock
 import com.bobsdevattic.wifimapper.model.FusedSample
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -80,4 +83,47 @@ class WifiScanner(context: Context) {
     }
 
     val isWifiEnabled: Boolean get() = wifiManager.isWifiEnabled
+
+    /** BSSID of the currently-connected network, or null. */
+    @SuppressLint("MissingPermission")
+    fun connectedBssid(): String? = try {
+        @Suppress("DEPRECATION")
+        wifiManager.connectionInfo?.bssid?.takeIf { it != "02:00:00:00:00:00" }
+    } catch (e: SecurityException) {
+        null
+    }
+
+    /** Full details of every network in the latest scan. */
+    @SuppressLint("MissingPermission")
+    fun detailedResults(): List<WifiNetworkInfo> = try {
+        val connected = connectedBssid()
+        val nowUs = SystemClock.elapsedRealtime() * 1000
+        wifiManager.scanResults.map { it.toInfo(connected, nowUs) }
+    } catch (e: SecurityException) {
+        emptyList()
+    }
+
+    /** Emits [detailedResults] whenever the system publishes a scan. */
+    fun detailedScanResults(): Flow<List<WifiNetworkInfo>> = callbackFlow {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) { trySend(detailedResults()) }
+        }
+        appContext.registerReceiver(receiver, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION))
+        trySend(detailedResults())
+        requestScan()
+        awaitClose { appContext.unregisterReceiver(receiver) }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun ScanResult.toInfo(connectedBssid: String?, nowUs: Long) = WifiNetworkInfo(
+        ssid = SSID?.takeIf { it.isNotBlank() } ?: "",
+        bssid = BSSID ?: "",
+        rssi = level,
+        frequencyMhz = frequency,
+        channelWidthCode = channelWidth,
+        wifiStandardCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) wifiStandard else null,
+        capabilities = capabilities ?: "",
+        connected = BSSID != null && BSSID.equals(connectedBssid, ignoreCase = true),
+        ageSeconds = ((nowUs - timestamp) / 1_000_000).coerceAtLeast(0),
+    )
 }

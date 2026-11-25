@@ -2,31 +2,59 @@ package com.bobsdevattic.wifimapper
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bobsdevattic.wifimapper.radar.RadarTarget
+import com.bobsdevattic.wifimapper.settings.ThemeMode
 import com.bobsdevattic.wifimapper.ui.CaptureScreen
+import com.bobsdevattic.wifimapper.ui.FloorsScreen
+import com.bobsdevattic.wifimapper.ui.NetworksScreen
+import com.bobsdevattic.wifimapper.ui.RadarScreen
 import com.bobsdevattic.wifimapper.ui.SessionsScreen
+import com.bobsdevattic.wifimapper.ui.SettingsScreen
 import com.bobsdevattic.wifimapper.ui.ViewerScreen
 import com.bobsdevattic.wifimapper.ui.theme.WifiMapperTheme
 
-/** App-level navigation targets. Kept as a tiny sealed state to avoid pulling in
- *  the full Navigation-Compose dependency for three screens. */
+/**
+ * App-level navigation. Kept as a tiny sealed state (rather than pulling in
+ * Navigation-Compose); [parent] defines where Back goes.
+ */
 sealed interface Screen {
-    data object Sessions : Screen
-    data object Capture : Screen
-    data class Viewer(val sessionId: Long) : Screen
+    val parent: Screen?
+
+    data object Sessions : Screen { override val parent: Screen? = null }
+    /** [sessionId] = add a floor to that map; null = new map. */
+    data class Capture(val sessionId: Long?, override val parent: Screen = Sessions) : Screen
+    data class Viewer(val sessionId: Long) : Screen { override val parent: Screen = Sessions }
+    data class Floors(val sessionId: Long) : Screen { override val parent: Screen get() = Viewer(sessionId) }
+    data object Networks : Screen { override val parent: Screen = Sessions }
+    data class Radar(val target: RadarTarget, override val parent: Screen = Networks) : Screen
+    data object Settings : Screen { override val parent: Screen = Sessions }
 }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { WifiMapperTheme { AppRoot() } }
+        val settings = (application as WifiMapperApp).settings
+        setContent {
+            val mode by settings.themeMode.collectAsStateWithLifecycle()
+            val dynamic by settings.dynamicColor.collectAsStateWithLifecycle()
+            val dark = when (mode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+            WifiMapperTheme(darkTheme = dark, dynamicColor = dynamic) { AppRoot() }
+        }
     }
 }
 
@@ -34,18 +62,39 @@ class MainActivity : ComponentActivity() {
 private fun AppRoot() {
     var screen by remember { mutableStateOf<Screen>(Screen.Sessions) }
 
+    // System Back walks up to the parent screen instead of closing the app.
+    BackHandler(enabled = screen.parent != null) { screen = screen.parent ?: Screen.Sessions }
+
     when (val s = screen) {
         Screen.Sessions -> SessionsScreen(
-            onNewCapture = { screen = Screen.Capture },
+            onNewCapture = { screen = Screen.Capture(sessionId = null) },
             onOpenSession = { screen = Screen.Viewer(it) },
+            onOpenNetworks = { screen = Screen.Networks },
+            onOpenSettings = { screen = Screen.Settings },
         )
-        Screen.Capture -> CaptureScreen(
-            onDone = { screen = Screen.Sessions },
+        is Screen.Capture -> CaptureScreen(
+            sessionId = s.sessionId,
+            onDone = { screen = s.sessionId?.let { Screen.Viewer(it) } ?: Screen.Sessions },
             onViewSession = { screen = Screen.Viewer(it) },
         )
         is Screen.Viewer -> ViewerScreen(
             sessionId = s.sessionId,
             onBack = { screen = Screen.Sessions },
+            onManageFloors = { screen = Screen.Floors(s.sessionId) },
         )
+        is Screen.Floors -> FloorsScreen(
+            sessionId = s.sessionId,
+            onBack = { screen = Screen.Viewer(s.sessionId) },
+            onAddFloor = { screen = Screen.Capture(s.sessionId, parent = Screen.Floors(s.sessionId)) },
+        )
+        Screen.Networks -> NetworksScreen(
+            onBack = { screen = Screen.Sessions },
+            onLocate = { screen = Screen.Radar(it) },
+        )
+        is Screen.Radar -> RadarScreen(
+            target = s.target,
+            onBack = { screen = s.parent },
+        )
+        Screen.Settings -> SettingsScreen(onBack = { screen = Screen.Sessions })
     }
 }

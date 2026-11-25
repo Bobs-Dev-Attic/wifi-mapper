@@ -3,14 +3,18 @@ package com.bobsdevattic.wifimapper.ui
 import android.Manifest
 import android.os.Build
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -18,17 +22,29 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bobsdevattic.wifimapper.capture.ArCaptureSurface
 import com.bobsdevattic.wifimapper.capture.CaptureViewModel
 import com.bobsdevattic.wifimapper.capture.arAvailable
+import com.bobsdevattic.wifimapper.model.FloorLayout
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
+/**
+ * Capture flow:
+ *  1. Set-up: name the map/floor and stand at the floor's start point (a spot you
+ *     can find on every floor, facing a fixed direction). The AR session starts
+ *     there, so its origin — and therefore every floor — lines up.
+ *  2. Capture: walk the floor; points auto-drop as you move.
+ *
+ * @param sessionId add a floor to this map, or null for a new map
+ */
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun CaptureScreen(
+    sessionId: Long?,
     onDone: () -> Unit,
     onViewSession: (Long) -> Unit,
     vm: CaptureViewModel = viewModel(),
 ) {
     val ui by vm.ui.collectAsStateWithLifecycle()
+    LaunchedEffect(sessionId) { vm.prepare(sessionId) }
 
     val permissions = buildList {
         add(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -41,16 +57,22 @@ fun CaptureScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val arOk = remember { arAvailable(context) }
 
-    var showNameDialog by remember { mutableStateOf(false) }
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (ui.sessionId == null) "New map" else ui.sessionName) },
+                title = {
+                    Text(
+                        when {
+                            ui.sessionId != null -> "${ui.sessionName} · ${ui.floorLabel}"
+                            sessionId != null -> "Add floor"
+                            else -> "New map"
+                        }
+                    )
+                },
                 navigationIcon = {
-                    TextButton(onClick = {
-                        vm.stopSession(); onDone()
-                    }) { Text("Done") }
+                    TextButton(onClick = { vm.stopSession(); onDone() }) {
+                        Text(if (ui.sessionId == null) "Cancel" else "Done")
+                    }
                 },
                 actions = { VersionBadge() },
             )
@@ -58,7 +80,7 @@ fun CaptureScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
 
-            // Camera / AR background while a session is active and AR is usable.
+            // Camera / AR background while a floor is being captured.
             if (ui.sessionId != null && arOk && permState.allPermissionsGranted) {
                 ArCaptureSurface(
                     poseSource = vm.poseSource,
@@ -67,16 +89,19 @@ fun CaptureScreen(
                 )
             }
 
-            if (!permState.allPermissionsGranted) {
-                PermissionPrompt(
+            when {
+                !permState.allPermissionsGranted -> PermissionPrompt(
                     onGrant = { permState.launchMultiplePermissionRequest() },
                     modifier = Modifier.align(Alignment.Center),
                 )
-            } else {
-                StatusOverlay(
+                ui.sessionId == null -> SetupStep(
+                    ui = ui,
+                    addingToExisting = sessionId != null,
+                    onStart = vm::startCapture,
+                )
+                else -> StatusOverlay(
                     ui = ui,
                     arOk = arOk,
-                    onStart = { showNameDialog = true },
                     onCapture = vm::recordSample,
                     onToggleAuto = vm::toggleAutoCapture,
                     onView = { ui.sessionId?.let(onViewSession) },
@@ -84,12 +109,98 @@ fun CaptureScreen(
             }
         }
     }
+}
 
-    if (showNameDialog) {
-        SessionNameDialog(
-            onConfirm = { name -> vm.startSession(name); showNameDialog = false },
-            onDismiss = { showNameDialog = false },
+@Composable
+private fun SetupStep(
+    ui: CaptureViewModel.UiState,
+    addingToExisting: Boolean,
+    onStart: (mapName: String, floorLabel: String, above: Boolean) -> Unit,
+) {
+    val existing = ui.existingFloors
+    var mapName by remember { mutableStateOf("") }
+    var floorLabel by remember(existing.size, addingToExisting) {
+        mutableStateOf(if (addingToExisting) "Floor ${existing.size + 1}" else "Ground floor")
+    }
+    var above by remember { mutableStateOf(true) }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (!addingToExisting) {
+            OutlinedTextField(
+                value = mapName, onValueChange = { mapName = it },
+                label = { Text("Map name (e.g. Home)") }, singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            Text("Adding a floor to “${ui.targetMapName}”", style = MaterialTheme.typography.titleMedium)
+            if (existing.isNotEmpty()) {
+                Text(
+                    "Existing floors (top to bottom): " +
+                        FloorLayout.topDown(existing).joinToString(" › ") { it.label },
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+
+        OutlinedTextField(
+            value = floorLabel, onValueChange = { floorLabel = it },
+            label = { Text("Floor label (e.g. Ground, Upstairs, Basement)") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
         )
+
+        if (addingToExisting && existing.isNotEmpty()) {
+            Column {
+                Text("Where is this floor?", style = MaterialTheme.typography.labelLarge)
+                listOf(true to "Above the top floor", false to "Below the bottom floor").forEach { (value, text) ->
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .selectable(selected = above == value, onClick = { above = value }, role = Role.RadioButton)
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = above == value, onClick = null)
+                        Spacer(Modifier.width(8.dp)); Text(text)
+                    }
+                }
+                Text("You can relabel and reorder floors later.", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
+        ElevatedCard {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Place, null); Spacer(Modifier.width(8.dp))
+                    Text("Mark the start point", style = MaterialTheme.typography.titleMedium)
+                }
+                if (!addingToExisting) {
+                    Text(
+                        "Pick a spot you can find again on every floor, ideally stacked " +
+                            "vertically: e.g. the corner by the stairs, or under a skylight. " +
+                            "Stand there, facing a fixed direction (e.g. the front-door wall).",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                } else {
+                    Text(
+                        "Stand directly above/below the start point you used on the other " +
+                            "floors, facing the SAME direction. This lines the floors up in 3D.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                Text(
+                    "Hold the phone at chest height. Mapping starts from exactly where you stand.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+
+        Button(
+            onClick = { onStart(mapName.ifBlank { "Untitled map" }, floorLabel.ifBlank { "Floor" }, above) },
+            enabled = addingToExisting.not() || ui.targetSessionId != null,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("I'm at the start point — start mapping") }
     }
 }
 
@@ -97,7 +208,6 @@ fun CaptureScreen(
 private fun StatusOverlay(
     ui: CaptureViewModel.UiState,
     arOk: Boolean,
-    onStart: () -> Unit,
     onCapture: () -> Unit,
     onToggleAuto: () -> Unit,
     onView: () -> Unit,
@@ -115,16 +225,12 @@ private fun StatusOverlay(
                 }
                 StatRow("Tracking", if (ui.tracking) "AR locked" else "not tracking",
                     if (ui.tracking) Color(0xFF1565C0) else Color(0xFFE65100))
-                StatRow("Floor", ui.floor.toString(), null)
+                StatRow("Floor", ui.floorLabel, null)
                 StatRow("Visible APs", ui.visibleAps.toString(), null)
                 StatRow("Best RSSI", ui.bestRssi?.let { "$it dBm" } ?: "—", null)
                 StatRow("Points", ui.pointCount.toString(), null)
                 StatRow("GPS anchor", if (ui.anchorSet) "set" else "waiting…", null)
                 StatRow("Walls seen", ui.wallsDetected.toString(), null)
-                if (!ui.hasBarometer) {
-                    Text("No barometer: floor from AR height only.",
-                        style = MaterialTheme.typography.bodySmall)
-                }
                 Text(ui.status, style = MaterialTheme.typography.bodySmall,
                     fontFamily = FontFamily.Monospace)
             }
@@ -132,27 +238,20 @@ private fun StatusOverlay(
 
         Spacer(Modifier.weight(1f))
 
-        if (ui.sessionId == null) {
-            Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp))
-                Text("Start mapping")
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            FilterChip(
+                selected = ui.autoCapture,
+                onClick = onToggleAuto,
+                label = { Text("Auto-capture") },
+            )
+            if (ui.pointCount > 0) {
+                AssistChip(onClick = onView, label = { Text("View 3D map") })
             }
-        } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FilterChip(
-                    selected = ui.autoCapture,
-                    onClick = onToggleAuto,
-                    label = { Text("Auto-capture") },
-                )
-                if (ui.pointCount > 0) {
-                    AssistChip(onClick = onView, label = { Text("View 3D map") })
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Button(onClick = onCapture, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.MyLocation, null); Spacer(Modifier.width(8.dp))
-                Text("Capture point here")
-            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onCapture, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.MyLocation, null); Spacer(Modifier.width(8.dp))
+            Text("Capture point here")
         }
     }
 }
@@ -177,25 +276,4 @@ private fun PermissionPrompt(onGrant: () -> Unit, modifier: Modifier = Modifier)
         Spacer(Modifier.height(16.dp))
         Button(onClick = onGrant) { Text("Grant permissions") }
     }
-}
-
-@Composable
-private fun SessionNameDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Name this map") },
-        text = {
-            OutlinedTextField(
-                value = name, onValueChange = { name = it },
-                singleLine = true, label = { Text("e.g. Home – all floors") },
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(name.ifBlank { "Untitled map" }) },
-            ) { Text("Start") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
 }

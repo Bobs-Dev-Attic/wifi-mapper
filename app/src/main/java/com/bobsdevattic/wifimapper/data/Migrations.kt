@@ -29,5 +29,36 @@ object Migrations {
         }
     }
 
-    val ALL = arrayOf(MIGRATION_1_2)
+    /** v2 → v3 (app 0.6.0): floors. Existing maps get a single "Floor 1". */
+    const val CREATE_FLOORS =
+        "CREATE TABLE IF NOT EXISTS `floors` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+            "`sessionId` INTEGER NOT NULL, `label` TEXT NOT NULL, `orderIndex` INTEGER NOT NULL, " +
+            "`createdAt` INTEGER NOT NULL, FOREIGN KEY(`sessionId`) REFERENCES `sessions`(`id`) " +
+            "ON UPDATE NO ACTION ON DELETE CASCADE )"
+
+    const val CREATE_FLOORS_INDEX =
+        "CREATE INDEX IF NOT EXISTS `index_floors_sessionId` ON `floors` (`sessionId`)"
+
+    /** Ordered statements for 2→3; also executed against SQLite in unit tests. */
+    val MIGRATION_2_3_SQL = listOf(
+        CREATE_FLOORS,
+        CREATE_FLOORS_INDEX,
+        "ALTER TABLE `sample_points` ADD COLUMN `floorId` INTEGER",
+        "ALTER TABLE `walls` ADD COLUMN `floorId` INTEGER",
+        // One floor per existing map, then attach that map's points and walls to it.
+        "INSERT INTO `floors` (`sessionId`, `label`, `orderIndex`, `createdAt`) " +
+            "SELECT `id`, 'Floor 1', 0, `createdAt` FROM `sessions`",
+        "UPDATE `sample_points` SET `floorId` = " +
+            "(SELECT f.`id` FROM `floors` f WHERE f.`sessionId` = `sample_points`.`sessionId`)",
+        "UPDATE `walls` SET `floorId` = " +
+            "(SELECT f.`id` FROM `floors` f WHERE f.`sessionId` = `walls`.`sessionId`)",
+    )
+
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            MIGRATION_2_3_SQL.forEach(db::execSQL)
+        }
+    }
+
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 }

@@ -57,16 +57,59 @@ interface WifiMapperDao {
     @Insert
     suspend fun insertWalls(walls: List<WallEntity>)
 
-    @Query("DELETE FROM walls WHERE sessionId=:sessionId")
-    suspend fun deleteWalls(sessionId: Long)
+    @Query("DELETE FROM walls WHERE floorId=:floorId")
+    suspend fun deleteWallsForFloor(floorId: Long)
 
-    /** Replace a session's walls with the latest ARCore snapshot, atomically. */
+    /** Replace one floor's walls with the latest ARCore snapshot, atomically. */
     @Transaction
-    suspend fun replaceWalls(sessionId: Long, walls: List<WallEntity>) {
-        deleteWalls(sessionId)
+    suspend fun replaceWalls(floorId: Long, walls: List<WallEntity>) {
+        deleteWallsForFloor(floorId)
         insertWalls(walls)
     }
 
     @Query("SELECT * FROM walls WHERE sessionId=:sessionId")
     suspend fun getWalls(sessionId: Long): List<WallEntity>
+
+    // --- Floors --------------------------------------------------------------
+
+    @Insert
+    suspend fun insertFloor(floor: FloorEntity): Long
+
+    @Query("SELECT * FROM floors WHERE sessionId=:sessionId ORDER BY orderIndex, id")
+    suspend fun getFloors(sessionId: Long): List<FloorEntity>
+
+    @Query("SELECT * FROM floors WHERE sessionId=:sessionId ORDER BY orderIndex, id")
+    fun observeFloors(sessionId: Long): Flow<List<FloorEntity>>
+
+    @Query("UPDATE floors SET label=:label WHERE id=:floorId")
+    suspend fun renameFloor(floorId: Long, label: String)
+
+    @Query("UPDATE floors SET orderIndex=:orderIndex WHERE id=:floorId")
+    suspend fun setFloorOrder(floorId: Long, orderIndex: Int)
+
+    /** Apply a whole new ordering at once (floorId → orderIndex). */
+    @Transaction
+    suspend fun reorderFloors(order: Map<Long, Int>) {
+        order.forEach { (id, idx) -> setFloorOrder(id, idx) }
+    }
+
+    @Query("SELECT floorId, COUNT(*) AS points FROM sample_points WHERE sessionId=:sessionId GROUP BY floorId")
+    fun observeFloorPointCounts(sessionId: Long): Flow<List<FloorPointCount>>
+
+    @Query("DELETE FROM sample_points WHERE floorId=:floorId")
+    suspend fun deletePointsForFloor(floorId: Long)
+
+    @Query("DELETE FROM floors WHERE id=:floorId")
+    suspend fun deleteFloorRow(floorId: Long)
+
+    /** Delete a floor and everything captured on it (AP readings cascade from points). */
+    @Transaction
+    suspend fun deleteFloor(floorId: Long) {
+        deletePointsForFloor(floorId)
+        deleteWallsForFloor(floorId)
+        deleteFloorRow(floorId)
+    }
 }
+
+/** Row type for [WifiMapperDao.observeFloorPointCounts]. */
+data class FloorPointCount(val floorId: Long?, val points: Int)

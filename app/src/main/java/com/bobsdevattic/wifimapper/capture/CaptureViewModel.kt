@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.bobsdevattic.wifimapper.WifiMapperApp
+import com.bobsdevattic.wifimapper.model.FloorInfo
 import com.bobsdevattic.wifimapper.model.FusedSample
 import com.bobsdevattic.wifimapper.model.Vector3
 import kotlinx.coroutines.Job
@@ -26,8 +27,15 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
     private val fusion = FusionEngine()
 
     data class UiState(
+        // Set-up (before capture): adding to an existing map, or a brand-new one.
+        val targetSessionId: Long? = null,
+        val targetMapName: String = "",
+        val existingFloors: List<FloorInfo> = emptyList(),
+        // Active capture.
         val sessionId: Long? = null,
         val sessionName: String = "",
+        val floorId: Long? = null,
+        val floorLabel: String = "",
         val pointCount: Int = 0,
         val tracking: Boolean = false,
         val floor: Int = 0,
@@ -54,19 +62,53 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
     /** Minimum movement (m) before auto-capture drops another sample. */
     private val autoCaptureSpacingM = 0.6f
 
-    fun startSession(name: String) {
+    /**
+     * Prepare the set-up step: [sessionId] = add a floor to that map, or null for
+     * a brand-new map. Safe to call repeatedly; ignored while capturing.
+     */
+    fun prepare(sessionId: Long?) {
         if (_ui.value.sessionId != null) return
+        if (sessionId == null) {
+            _ui.value = _ui.value.copy(targetSessionId = null, targetMapName = "", existingFloors = emptyList())
+            return
+        }
         viewModelScope.launch {
-            wallSource.clear()   // a new AR session starts with a fresh frame
-            val sessionId = repo.startSession(name, baselinePressure)
+            val name = repo.getSession(sessionId)?.name ?: "Map"
             _ui.value = _ui.value.copy(
-                sessionId = sessionId, sessionName = name, status = "Capturing",
+                targetSessionId = sessionId,
+                targetMapName = name,
+                existingFloors = repo.getFloors(sessionId),
             )
-            collectSensors(sessionId)
         }
     }
 
-    private fun collectSensors(sessionId: Long) {
+    /**
+     * Begin capturing a floor. The user is standing at the floor's marked start
+     * point, so the AR session that starts now has its origin there.
+     *
+     * @param mapName name for a new map (ignored when adding to an existing one)
+     * @param floorLabel e.g. "Ground floor", "Upstairs"
+     * @param above place the new floor above (true) or below (false) existing ones
+     */
+    fun startCapture(mapName: String, floorLabel: String, above: Boolean = true) {
+        if (_ui.value.sessionId != null) return
+        viewModelScope.launch {
+            wallSource.clear()   // a new AR session starts with a fresh frame
+            val target = _ui.value.targetSessionId
+            val sessionId = target ?: repo.startSession(mapName, baselinePressure)
+            val floorId = repo.addFloor(sessionId, floorLabel, above)
+            _ui.value = _ui.value.copy(
+                sessionId = sessionId,
+                sessionName = if (target != null) _ui.value.targetMapName else mapName,
+                floorId = floorId,
+                floorLabel = floorLabel,
+                status = "Capturing",
+            )
+            collectSensors(sessionId, floorId)
+        }
+    }
+
+    private fun collectSensors(sessionId: Long, floorId: Long) {
         // WiFi scans.
         jobs += viewModelScope.launch {
             wifi.scanResults().collect { readings ->
@@ -108,7 +150,7 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
         jobs += viewModelScope.launch {
             while (true) {
                 delay(WALL_AUTOSAVE_MS)
-                repo.replaceWalls(sessionId, wallSource.walls.value)
+                repo.replaceWalls(sessionId, floorId, wallSource.walls.value)
             }
         }
         // Pose stream -> update tracking state + auto-capture on movement.
@@ -136,6 +178,7 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
     /** Capture a sample at the current pose/readings (manual button or auto). */
     fun recordSample() {
         val sessionId = _ui.value.sessionId ?: return
+        val floorId = _ui.value.floorId ?: return
         val readings = latestReadings
         if (readings.isEmpty()) {
             _ui.value = _ui.value.copy(status = "No WiFi results yet (scan throttled?)")
@@ -144,7 +187,7 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
         val sample = fusion.fuse(poseSource.current(), latestPressure, baselinePressure, readings)
         lastSamplePos = sample.position
         viewModelScope.launch {
-            repo.saveSample(sessionId, sample)
+            repo.saveSample(sessionId, floorId, sample)
             _ui.value = _ui.value.copy(
                 pointCount = _ui.value.pointCount + 1,
                 floor = sample.floorIndex,
@@ -163,9 +206,11 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
         jobs.forEach { it.cancel() }
         jobs.clear()
         // Final wall save with the most complete snapshot ARCore produced.
-        _ui.value.sessionId?.let { id ->
+        val id = _ui.value.sessionId
+        val floorId = _ui.value.floorId
+        if (id != null && floorId != null) {
             val walls = wallSource.walls.value
-            viewModelScope.launch { repo.replaceWalls(id, walls) }
+            viewModelScope.launch { repo.replaceWalls(id, floorId, walls) }
         }
         _ui.value = UiState(hasBarometer = barometer.hasBarometer)
         lastSamplePos = null

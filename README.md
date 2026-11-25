@@ -5,7 +5,7 @@ space — including multi-level buildings like a house. Each measurement is plac
 in 3D by **fusing three positioning sources**, then visualised as a rotatable,
 colour-coded point cloud.
 
-> Current version: **0.5.0** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
+> Current version: **0.6.0** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
 
 ## Download & install
 
@@ -60,6 +60,27 @@ ui/         Sessions / Capture / Viewer screens, theme
 The **fusion and capture logic has no compile-time dependency on SceneView** —
 `ArCaptureSurface.kt` is the only AR-rendering file, so the pipeline is testable
 and resilient to SceneView API changes.
+
+## Multiple floors
+
+Map one floor per pass. Before each pass, stand at a **reference spot you can find on
+every floor, stacked vertically** (e.g. the corner by the stairs) and **face the same
+direction** each time. Each pass's AR tracking starts there, so the floors line up.
+Use the **Floors** page (layers icon in the 3D view) to rename and reorder floors;
+floor spacing is in Settings.
+
+## Finding a router or device (radar)
+
+**Nearby signals** (Wi-Fi icon on the home screen) lists Wi-Fi networks and Bluetooth
+LE devices; tap the locate icon to open the radar. Phone antennas can't sense
+direction, so the radar uses a **body-shadow sweep**: hold the phone upright and turn
+slowly on the spot. Your body blocks 5–10 dB from behind, so the signal peaks when
+you face the source. The radar fits that peak from the whole circle and points to
+it; the warmer/colder trend helps as you walk closer.
+
+Live updates work for your **connected Wi-Fi** and **Bluetooth** devices. Other Wi-Fi
+networks only refresh when Android allows a scan (about 4 per 2 minutes) unless you
+turn off *Developer options → Wi-Fi scan throttling*.
 
 ## Walls and signal loss
 

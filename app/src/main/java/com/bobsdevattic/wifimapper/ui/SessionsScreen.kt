@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,6 +30,8 @@ import java.util.Locale
 fun SessionsScreen(
     onNewCapture: () -> Unit,
     onOpenSession: (Long) -> Unit,
+    onOpenNetworks: () -> Unit,
+    onOpenSettings: () -> Unit,
     vm: SessionsViewModel = viewModel(),
 ) {
     val sessions by vm.sessions.collectAsStateWithLifecycle()
@@ -37,7 +41,15 @@ fun SessionsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("WiFi Mapper") },
-                actions = { VersionBadge() },
+                actions = {
+                    IconButton(onClick = onOpenNetworks) {
+                        Icon(Icons.Default.Wifi, contentDescription = "Nearby networks & radar")
+                    }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                    VersionBadge()
+                },
             )
         },
         floatingActionButton = {
