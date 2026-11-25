@@ -90,8 +90,10 @@ fun PermissionsScreen(onBack: () -> Unit) {
         onPauseOrDispose { }
     }
 
-    fun open(intent: Intent) = runCatching { ctx.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-    val appSettings = { open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}"))) }
+    fun open(intent: Intent) {
+        runCatching { ctx.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
+    val appSettings: () -> Unit = { open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}"))) }
 
     val permissionItems = catalog.map { p ->
         val granted = perms.permissions.firstOrNull { it.permission == p.name }?.status?.isGranted == true
