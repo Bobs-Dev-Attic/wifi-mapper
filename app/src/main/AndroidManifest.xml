@@ -55,7 +55,7 @@
         <!-- Serves the downloaded APK to the system installer via a content:// URI. -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authority="${applicationId}.fileprovider"
+            android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
