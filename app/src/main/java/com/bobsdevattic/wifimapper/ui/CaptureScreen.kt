@@ -74,7 +74,6 @@ fun CaptureScreen(
                         Text(if (ui.sessionId == null) "Cancel" else "Done")
                     }
                 },
-                actions = { VersionBadge() },
             )
         },
     ) { padding ->

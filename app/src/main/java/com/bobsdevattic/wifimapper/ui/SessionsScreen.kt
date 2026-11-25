@@ -21,7 +21,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.bobsdevattic.wifimapper.BuildConfig
 import com.bobsdevattic.wifimapper.update.UpdateBanner
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -58,7 +57,6 @@ fun SessionsScreen(
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
-                    VersionBadge()
                 },
             )
         },
@@ -106,12 +104,3 @@ fun SessionsScreen(
     }
 }
 
-@Composable
-fun VersionBadge() {
-    AssistChip(
-        onClick = {},
-        enabled = false,
-        label = { Text("v${BuildConfig.VERSION_NAME}") },
-        modifier = Modifier.padding(end = 8.dp),
-    )
-}

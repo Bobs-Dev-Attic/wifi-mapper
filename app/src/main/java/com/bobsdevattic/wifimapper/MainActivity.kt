@@ -20,6 +20,7 @@ import com.bobsdevattic.wifimapper.ui.FindDeviceScreen
 import com.bobsdevattic.wifimapper.ui.FinderScreen
 import com.bobsdevattic.wifimapper.ui.FloorsScreen
 import com.bobsdevattic.wifimapper.ui.NetworksScreen
+import com.bobsdevattic.wifimapper.ui.PermissionsScreen
 import com.bobsdevattic.wifimapper.ui.RadarScreen
 import com.bobsdevattic.wifimapper.ui.SessionsScreen
 import com.bobsdevattic.wifimapper.ui.SettingsScreen
@@ -41,6 +42,7 @@ sealed interface Screen {
     data object Networks : Screen { override val parent: Screen = Sessions }
     data class Radar(val target: RadarTarget, override val parent: Screen = Networks) : Screen
     data object Settings : Screen { override val parent: Screen = Sessions }
+    data object Permissions : Screen { override val parent: Screen = Settings }
     data object FindDevice : Screen { override val parent: Screen = Sessions }
     /** [sessionId] null = live paint only; otherwise can overlay that map's floors. */
     data class ArOverlay(val sessionId: Long?, override val parent: Screen = Sessions) : Screen
@@ -108,7 +110,11 @@ private fun AppRoot() {
             target = s.target,
             onBack = { screen = s.parent },
         )
-        Screen.Settings -> SettingsScreen(onBack = { screen = Screen.Sessions })
+        Screen.Settings -> SettingsScreen(
+            onBack = { screen = Screen.Sessions },
+            onOpenPermissions = { screen = Screen.Permissions },
+        )
+        Screen.Permissions -> PermissionsScreen(onBack = { screen = Screen.Settings })
         is Screen.ArOverlay -> ArOverlayScreen(
             sessionId = s.sessionId,
             onBack = { screen = s.parent },

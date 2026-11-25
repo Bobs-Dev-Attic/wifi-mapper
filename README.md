@@ -5,7 +5,7 @@ space — including multi-level buildings like a house. Each measurement is plac
 in 3D by **fusing three positioning sources**, then visualised as a rotatable,
 colour-coded point cloud.
 
-> Current version: **0.9.1** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
+> Current version: **0.10.0** (shown in Settings → About; see [CHANGELOG.md](CHANGELOG.md)).
 
 ## Download & install
 
@@ -105,7 +105,7 @@ your starting spot (~0.5–1 m).
 ## Radar styles
 
 The radar has a **motion-tracker** style (forward 180° fan whose grid rotates with your compass heading and labels **N**/E/S/W, ping waves that speed
-up as the signal strengthens, a blip at the target's bearing and range, red range
+up as the signal strengthens with a return bleep whose pitch rises as you get closer, a blip at the target's bearing and range, red range
 readout) and a **classic** compass style. Switch on the radar screen or in Settings.
 
 ## Find my Bluetooth device

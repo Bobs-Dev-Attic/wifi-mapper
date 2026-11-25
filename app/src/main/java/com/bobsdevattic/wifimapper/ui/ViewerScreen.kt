@@ -57,7 +57,6 @@ fun ViewerScreen(
                         Icon(Icons.Default.Layers, contentDescription = "Floors")
                     }
                     PalettePicker(current = ui.palette, onSelect = vm::setPalette)
-                    VersionBadge()
                 },
             )
         },

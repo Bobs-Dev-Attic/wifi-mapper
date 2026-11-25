@@ -105,7 +105,7 @@ fun RadarScreen(
                     )
                 }
                 if (style == RadarStyle.TRACKER) {
-                    FilterChip(selected = ping, onClick = { vm.settings.setPingSound(!ping) }, label = { Text("Ping") })
+                    FilterChip(selected = ping, onClick = { vm.settings.setPingSound(!ping) }, label = { Text("Sound") })
                 }
             }
 
