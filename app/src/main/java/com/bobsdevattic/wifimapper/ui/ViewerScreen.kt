@@ -19,6 +19,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bobsdevattic.wifimapper.viz.CoverageStats
 import com.bobsdevattic.wifimapper.viz.PointCloud3DView
 import com.bobsdevattic.wifimapper.viz.SignalColor
+import com.bobsdevattic.wifimapper.viz.SignalPalette
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Palette
 import com.bobsdevattic.wifimapper.viz.ViewerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,7 +43,10 @@ fun ViewerScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
-                actions = { VersionBadge() },
+                actions = {
+                    PalettePicker(current = ui.palette, onSelect = vm::setPalette)
+                    VersionBadge()
+                },
             )
         },
     ) { padding ->
@@ -81,13 +87,13 @@ fun ViewerScreen(
                         weakest = ui.stats.weakest,
                     )
                 }
-                SignalLegend(Modifier.align(Alignment.BottomStart).padding(16.dp))
+                SignalLegend(ui.palette, Modifier.align(Alignment.BottomStart).padding(16.dp))
             }
 
-            CoverageStatsPanel(stats = ui.stats)
+            CoverageStatsPanel(stats = ui.stats, palette = ui.palette)
 
             Text(
-                "Drag to orbit, pinch to zoom · MAX/MIN rings mark strongest & weakest signal",
+                "Drag to orbit, pinch to zoom · ▲ solid ring = strongest, ▼ dashed ring = weakest",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             )
@@ -96,11 +102,8 @@ fun ViewerScreen(
 }
 
 @Composable
-private fun CoverageStatsPanel(stats: CoverageStats) {
+private fun CoverageStatsPanel(stats: CoverageStats, palette: SignalPalette) {
     if (stats.count == 0) return
-    val scoreColor = androidx.compose.ui.graphics.Color.hsv(
-        120f * (stats.uniformity / 100f), 0.75f, 0.9f,
-    )
     ElevatedCard(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
         Row(
             Modifier.padding(16.dp),
@@ -110,7 +113,11 @@ private fun CoverageStatsPanel(stats: CoverageStats) {
                 Text(
                     "${stats.uniformity}%",
                     style = MaterialTheme.typography.headlineMedium,
-                    color = scoreColor,
+                )
+                // Score swatch in the active palette (text stays high-contrast).
+                Box(
+                    Modifier.width(48.dp).height(6.dp).clip(RoundedCornerShape(3.dp))
+                        .background(palette.at(stats.uniformity / 100f))
                 )
                 Text("uniformity", style = MaterialTheme.typography.labelSmall)
                 Text(stats.uniformityLabel, style = MaterialTheme.typography.labelMedium)
@@ -135,24 +142,55 @@ private fun StatLine(label: String, value: String) {
 }
 
 @Composable
-private fun SignalLegend(modifier: Modifier = Modifier) {
+private fun SignalLegend(palette: SignalPalette, modifier: Modifier = Modifier) {
     Column(modifier) {
         Text("Signal", style = MaterialTheme.typography.labelSmall)
         Box(
             Modifier.width(140.dp).height(10.dp).clip(RoundedCornerShape(5.dp))
                 .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            SignalColor.forRssi(SignalColor.RSSI_WORST),
-                            SignalColor.forRssi((SignalColor.RSSI_WORST + SignalColor.RSSI_BEST) / 2),
-                            SignalColor.forRssi(SignalColor.RSSI_BEST),
-                        )
-                    )
+                    Brush.horizontalGradient(palette.gradient())
                 )
         )
         Row(Modifier.width(140.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("${SignalColor.RSSI_WORST}", style = MaterialTheme.typography.labelSmall)
             Text("${SignalColor.RSSI_BEST} dBm", style = MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+@Composable
+private fun PalettePicker(current: SignalPalette, onSelect: (SignalPalette) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(Icons.Default.Palette, contentDescription = "Colour palette")
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            SignalPalette.entries.forEach { p ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(p.label)
+                            Text(
+                                p.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (p.colorblindSafe) MaterialTheme.colorScheme.onSurfaceVariant
+                                        else MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    },
+                    leadingIcon = {
+                        Box(
+                            Modifier.width(36.dp).height(12.dp).clip(RoundedCornerShape(6.dp))
+                                .background(Brush.horizontalGradient(p.gradient()))
+                        )
+                    },
+                    trailingIcon = {
+                        if (p == current) Icon(Icons.Default.Check, contentDescription = "Selected")
+                    },
+                    onClick = { onSelect(p); open = false },
+                )
+            }
         }
     }
 }

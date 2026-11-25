@@ -7,6 +7,20 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-25
+### Added
+- **Colour-blind-friendly palettes** with an in-viewer picker (palette icon in the
+  top bar). Default is now **Blue → Yellow (Cividis)**, designed for colour-vision
+  deficiency. Also available: Blue → Yellow (vivid), Purple → Yellow (Viridis),
+  Black → Cream (Magma), Blue → Orange, and the classic Red → Green (flagged as
+  not colour-blind safe). The choice is remembered between sessions.
+- Legend, point colours and the uniformity-score swatch all follow the chosen palette.
+
+### Changed
+- Strongest/weakest markers are distinguished by **shape**, not red/green: ▲ MAX is
+  a solid double ring, ▼ MIN is a dashed ring.
+- Capture screen tracking indicator uses blue/orange instead of green/red.
+
 ## [0.3.0] - 2026-11-25
 ### Added
 - **Strongest / weakest signal markers** in the 3D viewer: the best and worst
@@ -58,7 +72,8 @@ All notable changes to WiFi Mapper are documented here. The format follows
 - Device tuning notes for the Samsung Galaxy S25 Edge (ARCore + Depth, barometer,
   Wi-Fi 7 / 6 GHz, One UI 7 dynamic colour).
 
-[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.4.0
 [0.3.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.3.0
 [0.2.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.2.0
 [0.1.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.1.0
