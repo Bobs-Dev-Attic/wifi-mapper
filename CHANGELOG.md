@@ -7,6 +7,17 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-25
+### Changed
+- **Tracker radar grid now rotates with your compass heading.** Spokes (every 30°),
+  ring ticks (every 15°) and the dashed ring segments are locked to real bearings
+  and sweep across the fan as you turn.
+- **Compass labels:** **N** in red with a red spoke, E/S/W in cyan, and NE/SE/SW/NW as
+  smaller labels. When north is behind you, a red **◀ N** / **N ▶** at the edge shows
+  the shorter way to turn. A fixed notch at the top marks the way you're facing.
+- Compass heading is smoothed (wrap-safe across north, unit-tested) so the rotating
+  grid doesn't shimmer.
+
 ## [0.9.0] - 2026-11-25
 ### Added
 - **AR signal view** (AR icon on the home screen, and on a map's 3D view):
@@ -195,7 +206,8 @@ All notable changes to WiFi Mapper are documented here. The format follows
 - Device tuning notes for the Samsung Galaxy S25 Edge (ARCore + Depth, barometer,
   Wi-Fi 7 / 6 GHz, One UI 7 dynamic colour).
 
-[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.9.1
 [0.9.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.9.0
 [0.8.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.8.0
 [0.7.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.7.0

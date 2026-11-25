@@ -5,6 +5,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import com.bobsdevattic.wifimapper.model.CompassMath
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -32,6 +33,9 @@ class HeadingProvider(context: Context) {
         val rot = FloatArray(9)
         val remapped = FloatArray(9)
         val orientation = FloatArray(3)
+        // Raw compass jitters a few degrees; smooth it (wrap-safe) so heading-locked
+        // graphics like the tracker grid don't shimmer.
+        val smoother = CompassMath.HeadingSmoother(alpha = 0.25f)
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
                 SensorManager.getRotationMatrixFromVector(rot, event.values)
@@ -39,7 +43,7 @@ class HeadingProvider(context: Context) {
                 SensorManager.remapCoordinateSystem(rot, SensorManager.AXIS_X, SensorManager.AXIS_Z, remapped)
                 SensorManager.getOrientation(remapped, orientation)
                 val deg = Math.toDegrees(orientation[0].toDouble()).toFloat()
-                trySend((deg + 360f) % 360f)
+                trySend(smoother.add((deg + 360f) % 360f))
             }
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
