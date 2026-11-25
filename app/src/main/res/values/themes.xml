@@ -1,0 +1,5 @@
+<resources>
+    <!-- Base theme; Compose drives the actual Material3 colors at runtime.
+         A Material3 DayNight parent keeps system bars sane before Compose loads. -->
+    <style name="Theme.WifiMapper" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
