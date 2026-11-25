@@ -66,5 +66,29 @@ object UnitFormat {
         DistanceUnit.IMPERIAL -> listOf(3.0, 10.0, 30.0, 100.0).map { it / FT_PER_M to "${it.toInt()}ft" }
     }
 
+    /**
+     * Range rings for a zoomed tracker whose edge is [outerM] away: round numbers
+     * from a ×≈3 series (1/3/10/30/100/300 ft or 0.3/1/3/10/30/100 m), keeping
+     * those not crammed against the emitter. At the default 100 ft view this is
+     * 3/10/30/100 ft (or 1/3/10/30 m).
+     */
+    fun trackerRings(unit: DistanceUnit, outerM: Double): List<Pair<Double, String>> {
+        val series: List<Pair<Double, String>> = when (unit) {
+            DistanceUnit.IMPERIAL -> listOf(1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0)
+                .map { it / FT_PER_M to "${it.toInt()}ft" }
+            DistanceUnit.METRIC -> listOf(0.3, 1.0, 3.0, 10.0, 30.0, 100.0, 300.0)
+                .map { it to (if (it < 1) "${it}m" else "${it.toInt()}m") }
+        }
+        return series.filter { (m, _) ->
+            m <= outerM * 1.001 && TrackerMath.rangeFraction(m, outerM) >= 0.15f
+        }
+    }
+
+    /** "100 ft" / "30 m" for the zoom readout. */
+    fun viewRange(outerM: Double, unit: DistanceUnit): String = when (unit) {
+        DistanceUnit.IMPERIAL -> "${toFeet(outerM).roundToInt()} ft"
+        DistanceUnit.METRIC -> if (outerM < 10) "%.1f m".format(outerM) else "${outerM.roundToInt()} m"
+    }
+
     fun emptyRange(unit: DistanceUnit) = if (unit == DistanceUnit.METRIC) "--- m" else "--- ft"
 }

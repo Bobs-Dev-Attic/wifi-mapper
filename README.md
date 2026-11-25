@@ -111,7 +111,8 @@ region). Tracker rings use round numbers in each: 1/3/10/30 m or 3/10/30/100 ft.
 
 The radar has a **motion-tracker** style (forward 180° fan whose grid rotates with your compass heading and labels **N**/E/S/W, ping waves that speed
 up as the signal strengthens with a return bleep whose pitch rises as you get closer, a blip at the target's bearing and range, red range
-readout) and a **classic** compass style. Switch on the radar screen or in Settings.
+readout) and a **classic** compass style. Switch on the radar screen or in Settings. Pinch the tracker to zoom between 3 ft and
+100 ft; you can zoom out further (to ~330 ft) while the grid gradually fades. Double-tap resets the zoom.
 
 ## Find my Bluetooth device
 

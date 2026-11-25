@@ -7,6 +7,20 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-25
+### Added
+- **Pinch to zoom the tracker radar.** Spread two fingers to zoom in to a 3 ft
+  (0.9 m) view; pinch to zoom out. Up to 100 ft (30 m) the grid is fully drawn;
+  beyond that you can keep zooming out to ~330 ft (100 m) while the range rings,
+  spokes, ticks and ring labels **gradually fade** (signal-based distances are
+  guesswork that far out). Compass letters, the blip and ping waves stay clear.
+- Range rings adapt to the zoom with round numbers (1/3/10/30/100/300 ft or
+  0.3/1/3/10/30/100 m); the default view is unchanged (3/10/30/100 ft).
+- Pings and the return bleep follow the zoom. A target beyond the current view
+  is pinned to the edge with a dashed outline. Double-tap resets to 100 ft; a
+  new **RNG** readout shows the view range. One-finger drags still scroll.
+- Unit tests for the zoom clamp, grid fade, zoomed range scale and rings.
+
 ## [0.11.0] - 2026-11-25
 ### Added
 - **Distance units: metres or feet** (Settings → Units). Defaults to your phone's
