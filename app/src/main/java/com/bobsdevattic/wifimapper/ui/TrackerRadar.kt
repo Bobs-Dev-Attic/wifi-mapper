@@ -6,10 +6,15 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,6 +29,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -50,8 +56,8 @@ private val CyanDim = Color(0xFF1B6F86)
 private val RangeRed = Color(0xFFFF3B2F)
 
 
-private fun radiusFor(distanceM: Double, maxR: Float): Float =
-    (0.14f + 0.86f * TrackerMath.rangeFraction(distanceM)) * maxR   // inner 14% is the emitter
+private fun radiusFor(distanceM: Double, maxR: Float, outerM: Double): Float =
+    (0.14f + 0.86f * TrackerMath.rangeFraction(distanceM, outerM)) * maxR   // inner 14% is the emitter
 
 /**
  * Forward-facing "motion tracker" radar: the fan shows the 180° in front of you.
@@ -67,9 +73,13 @@ fun TrackerRadar(
     // Ping wave 0→1, restarted each cycle; cadence follows proximity.
     val pulse = remember { Animatable(0f) }
     val latest by rememberUpdatedState(ui)
-    // Range rings in the chosen unit: 1/3/10/30 m or 3/10/30/100 ft.
+    // Zoom: distance to the fan's outer edge. Pinch between 3 ft and ~330 ft;
+    // beyond 100 ft the grid fades out (distance estimates are guesswork there).
+    var outerM by rememberSaveable { mutableDoubleStateOf(TrackerMath.DEFAULT_OUTER_M) }
+    // Range rings in the chosen unit, adapted to the zoom (3/10/30/100 ft by default).
     val unit = LocalDistanceUnit.current
-    val rings = remember(unit) { UnitFormat.trackerRings(unit) }
+    val rings = remember(unit, outerM) { UnitFormat.trackerRings(unit, outerM) }
+    val gridAlpha = TrackerMath.gridAlpha(outerM)
     val audio = remember { TrackerAudio.create() }
     DisposableEffect(audio) { onDispose { audio?.release() } }
     LaunchedEffect(pingSound) {
@@ -88,7 +98,7 @@ fun TrackerRadar(
         snapshotFlow { pulse.value }.collect { now ->
             val range = latest.distanceRange
             if (pingSound && range != null && latest.rssi != null) {
-                val target = TrackerMath.rangeFraction(sqrt(range.first * range.second))
+                val target = TrackerMath.rangeFraction(sqrt(range.first * range.second), outerM)
                 if (TrackerMath.crossed(prev, now, target)) audio?.blip(latest.proximity)
             }
             prev = now
@@ -112,7 +122,26 @@ fun TrackerRadar(
             .border(1.dp, CyanDim, RoundedCornerShape(10.dp))
             .padding(8.dp),
     ) {
-        Canvas(Modifier.fillMaxWidth().aspectRatio(1.7f)) {
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(1.7f)
+                // Two-finger pinch zooms; one-finger drags fall through so the page still scrolls.
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        do {
+                            val event = awaitPointerEvent()
+                            if (event.changes.count { it.pressed } >= 2) {
+                                val zoom = event.calculateZoom()
+                                if (zoom != 1f) outerM = TrackerMath.zoomed(outerM, zoom)
+                                event.changes.forEach { it.consume() }
+                            }
+                        } while (event.changes.any { it.pressed })
+                    }
+                }
+                .pointerInput(Unit) { detectTapGestures(onDoubleTap = { outerM = TrackerMath.DEFAULT_OUTER_M }) },
+        ) {
             val cx = size.width / 2
             val cy = size.height * 0.94f
             val maxR = min(size.width / 2 * 0.96f, size.height * 0.9f)
@@ -138,7 +167,7 @@ fun TrackerRadar(
                     val path = Path().apply {
                         val r0 = maxR * 0.14f
                         moveTo(at(rel - w / 2, r0).x, at(rel - w / 2, r0).y)
-                        val outer = radiusFor(rings.last().first, maxR)    // stop at the outer ring
+                        val outer = maxR * 0.93f                            // stop inside the compass labels
                         for (k in 0..4) { val p = at(rel - w / 2 + w * k / 4, outer); lineTo(p.x, p.y) }
                         val e = at(rel + w / 2, r0); lineTo(e.x, e.y); close()
                     }
@@ -154,18 +183,21 @@ fun TrackerRadar(
 
             // Range rings: glow + segmented arc whose dashes rotate with heading,
             // plus bracket ticks every 15° of bearing.
+            // Zoomed out past 100 ft, the whole grid fades by gridAlpha.
+            textPaint.alpha = (255 * gridAlpha).roundToInt()
             rings.forEachIndexed { idx, (d, ringLabel) ->
-                val r = radiusFor(d, maxR)
+                val r = radiusFor(d, maxR, outerM)
                 val dashes = if (idx == rings.lastIndex) null
                     else PathEffect.dashPathEffect(floatArrayOf(38f, 10f), phase = r * headingRad)
-                glowArc(cx, cy, r, dashes)
+                glowArc(cx, cy, r, dashes, gridAlpha)
                 for (b in 0 until 360 step 15) {
                     val a = rel(b.toFloat()); if (abs(a) > 90f) continue
-                    drawLine(Cyan.copy(alpha = 0.8f), at(a, r - 7f), at(a, r + 7f), strokeWidth = 2f)
+                    drawLine(Cyan.copy(alpha = 0.8f * gridAlpha), at(a, r - 7f), at(a, r + 7f), strokeWidth = 2f)
                 }
                 val lbl = at(84f, r)                       // distance labels stay screen-fixed
                 drawContext.canvas.nativeCanvas.drawText(ringLabel, lbl.x + 6f, lbl.y - 6f, textPaint)
             }
+            textPaint.alpha = 255
 
             // Spokes every 30° of bearing, with terminal dots; compass labels outside.
             val spokeEnd = maxR * 0.93f
@@ -174,9 +206,9 @@ fun TrackerRadar(
                 val isNorth = b == 0
                 val col = if (isNorth) RangeRed else Cyan
                 val inner = at(a, maxR * 0.16f); val outer = at(a, spokeEnd)
-                drawLine(col.copy(alpha = 0.15f), inner, outer, strokeWidth = 7f)
-                drawLine(col.copy(alpha = if (isNorth) 0.95f else 0.75f), inner, outer, strokeWidth = if (isNorth) 3f else 2f)
-                drawCircle(col, 5f, outer); drawCircle(col.copy(alpha = 0.25f), 11f, outer)
+                drawLine(col.copy(alpha = 0.15f * gridAlpha), inner, outer, strokeWidth = 7f)
+                drawLine(col.copy(alpha = (if (isNorth) 0.95f else 0.75f) * gridAlpha), inner, outer, strokeWidth = if (isNorth) 3f else 2f)
+                drawCircle(col.copy(alpha = gridAlpha), 5f, outer); drawCircle(col.copy(alpha = 0.25f * gridAlpha), 11f, outer)
             }
             CompassMath.POINTS.forEach { (b, name, cardinal) ->
                 val a = rel(b); if (abs(a) > 86f) return@forEach
@@ -226,7 +258,8 @@ fun TrackerRadar(
             val range = ui.distanceRange
             if (range != null && ui.rssi != null) {
                 val mid = sqrt(range.first * range.second)
-                val r = radiusFor(mid, maxR)
+                val r = radiusFor(mid, maxR, outerM)
+                val beyond = mid > outerM                  // further than this zoom shows: pinned to the edge
                 val bearing = ui.bearingDeg?.takeIf { ui.contrastDb >= 3f }
                 if (bearing == null) {
                     drawArc(
@@ -242,6 +275,10 @@ fun TrackerRadar(
                     drawCircle(Cyan.copy(alpha = 0.18f + 0.3f * hit), 30f, p)
                     drawCircle(Cyan.copy(alpha = 0.45f + 0.4f * hit), 16f, p)
                     drawCircle(Color.White, 7f, p)
+                    if (beyond && !behind) drawCircle(
+                        Color.White.copy(alpha = 0.85f), 24f, p,
+                        style = Stroke(2.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f))),
+                    )
                     if (behind) drawContext.canvas.nativeCanvas.drawText(
                         if (rel < 0) "◀ BEHIND" else "BEHIND ▶",
                         if (rel < 0) p.x + 24f else p.x - 150f, p.y + 40f, textPaint,
@@ -267,6 +304,7 @@ fun TrackerRadar(
             Column {
                 ReadoutText("SIG ${ui.rssi?.let { "$it dBm" } ?: "---"}")
                 ReadoutText("HDG ${"%03d".format(ui.headingDeg.roundToInt() % 360)}°")
+                ReadoutText("RNG ${UnitFormat.viewRange(outerM, unit)}")
             }
             Text(
                 ui.distanceRange?.let { UnitFormat.range(it, unit) } ?: UnitFormat.emptyRange(unit),
@@ -285,6 +323,11 @@ fun TrackerRadar(
                 ReadoutText("SWP ${(ui.coverage * 100).roundToInt()}%")
             }
         }
+        Text(
+            "Pinch to zoom · double-tap to reset",
+            style = TextStyle(color = CyanDim, fontFamily = FontFamily.Monospace, fontSize = 11.sp),
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 2.dp),
+        )
     }
 }
 
@@ -295,10 +338,10 @@ private fun ReadoutText(text: String) = Text(
 )
 
 /** A forward-half ring with a phosphor glow (wide faint stroke under a thin bright one). */
-private fun DrawScope.glowArc(cx: Float, cy: Float, r: Float, effect: PathEffect?) {
+private fun DrawScope.glowArc(cx: Float, cy: Float, r: Float, effect: PathEffect?, alpha: Float = 1f) {
     val tl = Offset(cx - r, cy - r); val sz = Size(r * 2, r * 2)
-    drawArc(Cyan.copy(alpha = 0.12f), 180f, 180f, false, tl, sz, style = Stroke(14f))
-    drawArc(Cyan.copy(alpha = 0.9f), 180f, 180f, false, tl, sz, style = Stroke(2.5f, cap = StrokeCap.Butt, pathEffect = effect))
+    drawArc(Cyan.copy(alpha = 0.12f * alpha), 180f, 180f, false, tl, sz, style = Stroke(14f))
+    drawArc(Cyan.copy(alpha = 0.9f * alpha), 180f, 180f, false, tl, sz, style = Stroke(2.5f, cap = StrokeCap.Butt, pathEffect = effect))
 }
 
 private fun compassPaint(size: Float, color: Int, bold: Boolean) = android.graphics.Paint().apply {
