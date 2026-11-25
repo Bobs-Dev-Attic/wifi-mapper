@@ -1,0 +1,128 @@
+package com.bobsdevattic.wifimapper.viz
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import com.bobsdevattic.wifimapper.model.Vector3
+import kotlin.math.cos
+import kotlin.math.sin
+
+/** A single renderable point: world position (metres), colour, and floor. */
+data class CloudPoint(val position: Vector3, val color: Color, val floor: Int)
+
+/**
+ * Lightweight interactive 3D scatter/heatmap rendered on a Compose [Canvas].
+ *
+ * One-finger drag orbits (yaw/pitch); pinch zooms. Points are coloured by signal
+ * strength and depth-sorted so nearer points draw on top. This intentionally uses
+ * no GPU/SceneView dependency — it's the dependable default viewer. A Filament/
+ * SceneView renderer can be swapped in later for large clouds or AR overlay.
+ */
+@Composable
+fun PointCloud3DView(
+    points: List<CloudPoint>,
+    modifier: Modifier = Modifier,
+) {
+    var yaw by remember { mutableFloatStateOf(0.6f) }
+    var pitch by remember { mutableFloatStateOf(0.5f) }
+    var scale by remember { mutableFloatStateOf(1f) }
+
+    // Centre and auto-fit the cloud once per data set.
+    val centroid = remember(points) {
+        if (points.isEmpty()) Vector3.ZERO
+        else points.fold(Vector3.ZERO) { a, p -> a + p.position } * (1f / points.size)
+    }
+    val extent = remember(points) {
+        points.maxOfOrNull { it.position.distanceTo(centroid) }?.coerceAtLeast(0.5f) ?: 1f
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        yaw += pan.x * 0.01f
+                        pitch = (pitch + pan.y * 0.01f).coerceIn(-1.5f, 1.5f)
+                        scale = (scale * zoom).coerceIn(0.2f, 8f)
+                    }
+                }
+        ) {
+            if (points.isEmpty()) return@Canvas
+
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+            // Fit: map the cloud's extent to ~40% of the smaller screen dimension.
+            val fit = (minOf(size.width, size.height) * 0.4f) / extent
+
+            val cosY = cos(yaw); val sinY = sin(yaw)
+            val cosP = cos(pitch); val sinP = sin(pitch)
+
+            fun project(p: Vector3): Triple<Float, Float, Float> {
+                // Centre, then rotate around Y (yaw) and X (pitch).
+                val dx = p.x - centroid.x
+                val dy = p.y - centroid.y
+                val dz = p.z - centroid.z
+                // Yaw about vertical axis.
+                val x1 = dx * cosY + dz * sinY
+                val z1 = -dx * sinY + dz * cosY
+                // Pitch about horizontal axis.
+                val y2 = dy * cosP - z1 * sinP
+                val z2 = dy * sinP + z1 * cosP
+                val s = fit * scale
+                // Orthographic screen position; z2 is depth for sorting/sizing.
+                return Triple(cx + x1 * s, cy - y2 * s, z2)
+            }
+
+            // Draw a faint ground grid at the baseline floor for spatial reference.
+            drawReferenceGrid(centroid, extent, ::project)
+
+            // Depth sort: far (small/negative depth first) so near points overdraw.
+            val projected = points
+                .map { it to project(it.position) }
+                .sortedBy { it.second.third }
+
+            projected.forEach { (pt, pr) ->
+                val (sx, sy, depth) = pr
+                // Size falls off with depth for a sense of perspective.
+                val norm = ((depth / extent) + 1f) / 2f
+                val radius = (10f + norm * 10f) * scale.coerceAtMost(2f)
+                drawCircle(
+                    color = pt.color.copy(alpha = 0.85f),
+                    radius = radius,
+                    center = Offset(sx, sy),
+                )
+            }
+        }
+    }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawReferenceGrid(
+    centroid: Vector3,
+    extent: Float,
+    project: (Vector3) -> Triple<Float, Float, Float>,
+) {
+    val half = extent
+    val step = (extent / 4f).coerceAtLeast(0.5f)
+    val gridColor = Color(0x33FFFFFF)
+    var g = -half
+    while (g <= half) {
+        val a = project(Vector3(centroid.x + g, centroid.y, centroid.z - half))
+        val b = project(Vector3(centroid.x + g, centroid.y, centroid.z + half))
+        drawLine(gridColor, Offset(a.first, a.second), Offset(b.first, b.second), 1f)
+        val c = project(Vector3(centroid.x - half, centroid.y, centroid.z + g))
+        val d = project(Vector3(centroid.x + half, centroid.y, centroid.z + g))
+        drawLine(gridColor, Offset(c.first, c.second), Offset(d.first, d.second), 1f)
+        g += step
+    }
+}

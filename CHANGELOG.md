@@ -1,0 +1,34 @@
+# Changelog
+
+All notable changes to WiFi Mapper are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
+[Semantic Versioning](https://semver.org/). The in-app version badge shows the
+`versionName` defined in `app/build.gradle.kts`.
+
+## [Unreleased]
+
+## [0.1.0] - 2026-11-25
+### Added
+- Initial project scaffold: Kotlin + Jetpack Compose (Material 3), min SDK 26,
+  target SDK 35.
+- **Fused 3D positioning** combining three sources:
+  - ARCore (SceneView) for fine-grained local `(x, y, z)` pose via visual-inertial
+    tracking — the backbone for genuine 3D, multi-level mapping.
+  - GPS / fused location to set a per-session geo-anchor (georeferences the cloud;
+    not used for indoor x/y).
+  - Barometer for an independent vertical signal and floor-index inference.
+- WiFi scanning via `WifiManager` with Android scan-throttling handled (broadcast
+  listener + connected-AP RSSI fallback). 2.4 / 5 / **6 GHz (Wi-Fi 6E/7)** band
+  detection.
+- Room persistence: sessions, sample points, and per-AP readings; schema export
+  enabled for DB version tracking.
+- Capture screen: live tracking/floor/AP/RSSI status, auto-capture on movement,
+  manual "capture point", and runtime permission handling.
+- 3D viewer: self-contained rotatable/zoomable Compose-canvas point cloud coloured
+  by signal strength (red→green), per-floor filtering, and a signal legend.
+- In-app version badge (from `BuildConfig`).
+- Device tuning notes for the Samsung Galaxy S25 Edge (ARCore + Depth, barometer,
+  Wi-Fi 7 / 6 GHz, One UI 7 dynamic colour).
+
+[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.1.0
