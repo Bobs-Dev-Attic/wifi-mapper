@@ -15,6 +15,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bobsdevattic.wifimapper.radar.RadarTarget
 import com.bobsdevattic.wifimapper.settings.ThemeMode
 import com.bobsdevattic.wifimapper.ui.CaptureScreen
+import com.bobsdevattic.wifimapper.ui.FindDeviceScreen
+import com.bobsdevattic.wifimapper.ui.FinderScreen
 import com.bobsdevattic.wifimapper.ui.FloorsScreen
 import com.bobsdevattic.wifimapper.ui.NetworksScreen
 import com.bobsdevattic.wifimapper.ui.RadarScreen
@@ -38,6 +40,8 @@ sealed interface Screen {
     data object Networks : Screen { override val parent: Screen = Sessions }
     data class Radar(val target: RadarTarget, override val parent: Screen = Networks) : Screen
     data object Settings : Screen { override val parent: Screen = Sessions }
+    data object FindDevice : Screen { override val parent: Screen = Sessions }
+    data class Finder(val target: RadarTarget.Ble, override val parent: Screen = FindDevice) : Screen
 }
 
 class MainActivity : ComponentActivity() {
@@ -71,6 +75,7 @@ private fun AppRoot() {
             onOpenSession = { screen = Screen.Viewer(it) },
             onOpenNetworks = { screen = Screen.Networks },
             onOpenSettings = { screen = Screen.Settings },
+            onFindDevice = { screen = Screen.FindDevice },
         )
         is Screen.Capture -> CaptureScreen(
             sessionId = s.sessionId,
@@ -89,12 +94,24 @@ private fun AppRoot() {
         )
         Screen.Networks -> NetworksScreen(
             onBack = { screen = Screen.Sessions },
-            onLocate = { screen = Screen.Radar(it) },
+            // Bluetooth devices open the hot/cold finder (radar is one tap away there).
+            onLocate = { t ->
+                screen = if (t is RadarTarget.Ble) Screen.Finder(t, parent = Screen.Networks) else Screen.Radar(t)
+            },
         )
         is Screen.Radar -> RadarScreen(
             target = s.target,
             onBack = { screen = s.parent },
         )
         Screen.Settings -> SettingsScreen(onBack = { screen = Screen.Sessions })
+        Screen.FindDevice -> FindDeviceScreen(
+            onBack = { screen = Screen.Sessions },
+            onFind = { screen = Screen.Finder(it) },
+        )
+        is Screen.Finder -> FinderScreen(
+            target = s.target,
+            onBack = { screen = s.parent },
+            onFindDirection = { screen = Screen.Radar(it, parent = s) },
+        )
     }
 }

@@ -7,6 +7,28 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-25
+### Added
+- **Find my device** (Bluetooth icon on the home screen):
+  - **Your paired devices**, each marked "heard now" with its signal and rough
+    distance when it's advertising, or why it can't be heard (off / in its case /
+    classic-Bluetooth-only).
+  - **Nearby now**: every Bluetooth LE device currently advertising.
+- **Hot/cold finder** for a chosen device: a proximity ring (Far → Getting closer →
+  Near → Very close → Right here), Geiger-counter **beeps and vibration that speed
+  up as you get closer**, strongest-so-far marker with a "you may have walked
+  past it" warning, warmer/colder trend, last-heard timer, and a **Find direction**
+  button that opens the radar sweep for the device.
+- Matching by address with a fallback to the advertised name, for devices that
+  rotate their Bluetooth address.
+- `ProximityEstimator` (median + moving-average smoothing that ignores single
+  RSSI spikes) with unit tests.
+
+### Changed
+- Locating a Bluetooth device from Nearby signals now opens the finder (radar is
+  one tap away from there).
+- Adds the `BLUETOOTH_CONNECT` permission (Android 12+) to read paired device names.
+
 ## [0.6.0] - 2026-11-25
 ### Added
 - **Multi-floor maps.** A map now holds floors, each captured in its own pass that
@@ -129,7 +151,8 @@ All notable changes to WiFi Mapper are documented here. The format follows
 - Device tuning notes for the Samsung Galaxy S25 Edge (ARCore + Depth, barometer,
   Wi-Fi 7 / 6 GHz, One UI 7 dynamic colour).
 
-[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.7.0
 [0.6.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.6.0
 [0.5.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.5.0
 [0.4.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.4.0

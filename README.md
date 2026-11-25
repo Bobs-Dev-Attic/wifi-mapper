@@ -5,7 +5,7 @@ space — including multi-level buildings like a house. Each measurement is plac
 in 3D by **fusing three positioning sources**, then visualised as a rotatable,
 colour-coded point cloud.
 
-> Current version: **0.6.0** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
+> Current version: **0.7.0** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
 
 ## Download & install
 
@@ -81,6 +81,17 @@ it; the warmer/colder trend helps as you walk closer.
 Live updates work for your **connected Wi-Fi** and **Bluetooth** devices. Other Wi-Fi
 networks only refresh when Android allows a scan (about 4 per 2 minutes) unless you
 turn off *Developer options → Wi-Fi scan throttling*.
+
+## Find my Bluetooth device
+
+**Find my device** (Bluetooth icon on the home screen) lists your paired devices and
+everything advertising nearby. Pick one for a **hot/cold finder**: beeps and
+vibration speed up as you get closer, and a "strongest so far" marker warns if you
+walk past it. **Find direction** opens the radar sweep.
+
+It can only find a device that's **advertising**: not one that's off, out of
+battery, or (for most earbuds) closed in its case. It can't make the device ring;
+use the maker's app for that (e.g. SmartThings Find for Galaxy Buds).
 
 ## Walls and signal loss
 

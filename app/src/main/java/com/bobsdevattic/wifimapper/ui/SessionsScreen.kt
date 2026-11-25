@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Wifi
@@ -32,6 +33,7 @@ fun SessionsScreen(
     onOpenSession: (Long) -> Unit,
     onOpenNetworks: () -> Unit,
     onOpenSettings: () -> Unit,
+    onFindDevice: () -> Unit,
     vm: SessionsViewModel = viewModel(),
 ) {
     val sessions by vm.sessions.collectAsStateWithLifecycle()
@@ -42,6 +44,9 @@ fun SessionsScreen(
             TopAppBar(
                 title = { Text("WiFi Mapper") },
                 actions = {
+                    IconButton(onClick = onFindDevice) {
+                        Icon(Icons.Default.BluetoothSearching, contentDescription = "Find my Bluetooth device")
+                    }
                     IconButton(onClick = onOpenNetworks) {
                         Icon(Icons.Default.Wifi, contentDescription = "Nearby networks & radar")
                     }

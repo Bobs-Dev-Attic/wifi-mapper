@@ -89,6 +89,25 @@ class BleScanner(context: Context) {
         }
     }
 
+    /**
+     * Devices paired with this phone (needs BLUETOOTH_CONNECT on Android 12+).
+     * Returns null if the permission is missing, empty if Bluetooth is off.
+     */
+    @SuppressLint("MissingPermission")
+    fun pairedDevices(): List<PairedDevice>? = try {
+        adapter?.bondedDevices.orEmpty().map { d ->
+            PairedDevice(
+                address = d.address,
+                name = d.name ?: d.address,
+                supportsLe = d.type == android.bluetooth.BluetoothDevice.DEVICE_TYPE_LE ||
+                    d.type == android.bluetooth.BluetoothDevice.DEVICE_TYPE_DUAL ||
+                    d.type == android.bluetooth.BluetoothDevice.DEVICE_TYPE_UNKNOWN,
+            )
+        }.sortedBy { it.name.lowercase() }
+    } catch (e: SecurityException) {
+        null
+    }
+
     @SuppressLint("MissingPermission")
     private fun ScanResult.toInfo(): BleDeviceInfo {
         val record = scanRecord
