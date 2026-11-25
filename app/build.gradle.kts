@@ -13,8 +13,30 @@ android {
         applicationId = "com.bobsdevattic.wifimapper"
         minSdk = 26          // Android 8.0. ARCore needs 24+; 26 gives us modern APIs.
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // Version is overridable from CI (release workflow passes the git tag):
+        //   ./gradlew assembleRelease -PappVersionName=0.2.0 -PappVersionCode=200
+        versionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 2
+        versionName = (project.findProperty("appVersionName") as String?) ?: "0.2.0"
+
+        // GitHub repo the in-app updater checks for new releases.
+        buildConfigField("String", "UPDATE_REPO", "\"Bobs-Dev-Attic/wifi-mapper\"")
+    }
+
+    // Release signing. CI exports these env vars from GitHub secrets; when absent
+    // (local builds, PR CI) we fall back to the debug key so assembleRelease still
+    // yields an installable APK. For working in-app auto-update, publish ALL
+    // releases from CI with the same keystore so signatures stay consistent.
+    val releaseKeystore: String? =
+        System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotBlank() && file(it).exists() }
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -24,6 +46,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = if (releaseKeystore != null)
+                signingConfigs.getByName("release")
+            else
+                signingConfigs.getByName("debug")
         }
     }
 

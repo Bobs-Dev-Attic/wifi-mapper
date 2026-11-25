@@ -5,7 +5,23 @@ space — including multi-level buildings like a house. Each measurement is plac
 in 3D by **fusing three positioning sources**, then visualised as a rotatable,
 colour-coded point cloud.
 
-> Current version: **0.1.0** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
+> Current version: **0.2.0** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
+
+## Download & install
+
+Built APKs are published on the repo's
+[**Releases**](https://github.com/Bobs-Dev-Attic/wifi-mapper/releases) page once a
+`vX.Y.Z` tag is pushed (see *Releasing* below). On your phone, download the APK
+and open it to install (you'll be asked to allow installing from this source).
+
+Once a version is installed, the app **auto-updates itself**: on launch it checks
+GitHub Releases and, if a newer version exists, offers a one-tap *Download &
+install* banner. (There's no Play Store listing, so this replaces Play
+auto-update for sideloaded builds.)
+
+> Note: reliable in-place auto-update requires every release to be signed with the
+> **same** keystore — otherwise Android rejects the update on a signature
+> mismatch. Configure signing once (below) so all CI releases share a key.
 
 ## Why not just GPS?
 
@@ -71,5 +87,45 @@ Permissions requested at runtime: camera (AR), fine location + nearby-WiFi
 - ARCore + **Depth API** supported; barometer present → full fusion path available.
 - **Wi-Fi 7 with 6 GHz** → band detection covers 2.4 / 5 / **6 GHz**.
 - ~6.7″ 1.5K display → Compose edge-to-edge layout.
+
+## Releasing (makes the app downloadable + drives auto-update)
+
+CI (`.github/workflows/ci.yml`) builds a debug APK on every push/PR. To cut a
+downloadable release, bump the version and push a tag:
+
+```bash
+# bump versionName/versionCode default in app/build.gradle.kts first
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+`release.yml` then builds the APK (version derived from the tag) and publishes it
+to GitHub Releases. The in-app updater checks `releases/latest`, so the next
+launch of an older install offers the update.
+
+### One-time signing setup (recommended)
+
+So auto-update works across versions, sign every release with one keystore stored
+as GitHub secrets. Run locally (the private key never leaves your machine or the
+secrets store):
+
+```bash
+keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 \
+        -validity 10000 -alias wifimapper
+base64 -w0 release.jks > release.jks.b64   # macOS: base64 -i release.jks -o release.jks.b64
+```
+
+Then add these repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|---|---|
+| `KEYSTORE_BASE64` | contents of `release.jks.b64` |
+| `KEYSTORE_PASSWORD` | the keystore password |
+| `KEY_ALIAS` | `wifimapper` |
+| `KEY_PASSWORD` | the key password |
+
+Without these, releases still build but are **debug-signed** (fine for a first
+install; not guaranteed to update in place across machines). Do **not** commit the
+keystore — `.gitignore` already excludes `*.jks`.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.

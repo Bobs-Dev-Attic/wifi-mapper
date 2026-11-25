@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bobsdevattic.wifimapper.BuildConfig
+import com.bobsdevattic.wifimapper.update.UpdateBanner
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -47,21 +48,20 @@ fun SessionsScreen(
             )
         },
     ) { padding ->
-        if (sessions.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text(
-                    "No maps yet.\nTap “New map” to walk a space and record WiFi strength in 3D.",
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(32.dp),
-                )
-            }
-        } else {
-            LazyColumn(
-                contentPadding = padding,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                items(sessions, key = { it.id }) { s ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            UpdateBanner()
+            if (sessions.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        "No maps yet.\nTap “New map” to walk a space and record WiFi strength in 3D.",
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(32.dp),
+                    )
+                }
+            } else {
+                LazyColumn(Modifier.fillMaxSize()) {
+                    items(sessions, key = { it.id }) { s ->
                     ListItem(
                         headlineContent = { Text(s.name) },
                         supportingContent = {
@@ -76,7 +76,8 @@ fun SessionsScreen(
                         },
                         modifier = Modifier.clickable { onOpenSession(s.id) },
                     )
-                    HorizontalDivider()
+                        HorizontalDivider()
+                    }
                 }
             }
         }

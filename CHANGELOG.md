@@ -7,6 +7,25 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-25
+### Added
+- **In-app auto-update.** On launch the app checks GitHub Releases; when a newer
+  version is available it shows a banner to download and install the APK
+  (`update/` package: `UpdateChecker`, `ApkInstaller`, `UpdateViewModel`,
+  `UpdateBanner`). Uses a `FileProvider` + the system package installer.
+- **CI workflow** (`.github/workflows/ci.yml`) building a debug APK on every push
+  and pull request — this is also the project's first real build verification.
+- **Release workflow** (`.github/workflows/release.yml`): pushing a `vX.Y.Z` tag
+  builds a (signed, if secrets are configured) release APK and publishes it to
+  GitHub Releases, which makes the app downloadable and drives the auto-updater.
+- Version is now overridable from CI via `-PappVersionName` / `-PappVersionCode`,
+  derived from the release tag.
+- `INTERNET` and `REQUEST_INSTALL_PACKAGES` permissions for the updater.
+
+### Changed
+- Release builds use a keystore from CI secrets when present, otherwise fall back
+  to debug signing so a build always produces an installable APK.
+
 ## [0.1.0] - 2026-11-25
 ### Added
 - Initial project scaffold: Kotlin + Jetpack Compose (Material 3), min SDK 26,
@@ -30,5 +49,6 @@ All notable changes to WiFi Mapper are documented here. The format follows
 - Device tuning notes for the Samsung Galaxy S25 Edge (ARCore + Depth, barometer,
   Wi-Fi 7 / 6 GHz, One UI 7 dynamic colour).
 
-[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.2.0
 [0.1.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.1.0
