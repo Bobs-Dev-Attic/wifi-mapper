@@ -2,6 +2,8 @@ package com.bobsdevattic.wifimapper.data
 
 import android.content.Context
 import com.bobsdevattic.wifimapper.model.FusedSample
+import com.bobsdevattic.wifimapper.model.Vector3
+import com.bobsdevattic.wifimapper.model.WallObservation
 import kotlinx.coroutines.flow.Flow
 
 /** Thin repository over the Room DAO; the rest of the app talks to this. */
@@ -54,6 +56,25 @@ class MeasurementRepository(private val dao: WifiMapperDao) {
     suspend fun getPoints(sessionId: Long) = dao.getPoints(sessionId)
     fun observePointCount(sessionId: Long): Flow<Int> = dao.observePointCount(sessionId)
     suspend fun deleteSession(id: Long) = dao.deleteSession(id)
+
+    /** Store the latest set of detected walls for a session (replaces previous). */
+    suspend fun replaceWalls(sessionId: Long, walls: List<WallObservation>) =
+        dao.replaceWalls(sessionId, walls.map { w ->
+            WallEntity(
+                sessionId = sessionId,
+                cx = w.center.x, cy = w.center.y, cz = w.center.z,
+                nx = w.nx, nz = w.nz, width = w.width, height = w.height,
+                // Same convention as sample points without a barometer: ~3 m storeys
+                // relative to the AR origin (the phone's start height).
+                floorIndex = Math.round(w.center.y / 3f),
+            )
+        })
+
+    /** A session's walls, paired with the floor index each was assigned. */
+    suspend fun getWalls(sessionId: Long): List<Pair<WallObservation, Int>> =
+        dao.getWalls(sessionId).map { e ->
+            WallObservation(Vector3(e.cx, e.cy, e.cz), e.nx, e.nz, e.width, e.height) to e.floorIndex
+        }
 
     companion object {
         fun from(context: Context) = MeasurementRepository(WifiMapperDatabase.get(context).dao())

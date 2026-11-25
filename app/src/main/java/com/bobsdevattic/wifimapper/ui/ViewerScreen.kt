@@ -23,6 +23,7 @@ import com.bobsdevattic.wifimapper.viz.SignalPalette
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Palette
 import com.bobsdevattic.wifimapper.viz.ViewerViewModel
+import com.bobsdevattic.wifimapper.viz.WallSummary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,13 +53,18 @@ fun ViewerScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
 
-            // Floor filter.
-            if (ui.availableFloors.size > 1) {
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
+            // Layer toggles + floor filter.
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = ui.showWalls,
+                    onClick = vm::toggleWalls,
+                    label = { Text("Walls (${ui.wallSummary.count})") },
+                )
+                if (ui.availableFloors.size > 1) {
                     FilterChip(
                         selected = ui.floorFilter == null,
                         onClick = { vm.setFloorFilter(null) },
@@ -85,15 +91,16 @@ fun ViewerScreen(
                         points = ui.points,
                         strongest = ui.stats.strongest,
                         weakest = ui.stats.weakest,
+                        walls = if (ui.showWalls) ui.walls else emptyList(),
                     )
                 }
                 SignalLegend(ui.palette, Modifier.align(Alignment.BottomStart).padding(16.dp))
             }
 
-            CoverageStatsPanel(stats = ui.stats, palette = ui.palette)
+            CoverageStatsPanel(stats = ui.stats, palette = ui.palette, walls = ui.wallSummary)
 
             Text(
-                "Drag to orbit, pinch to zoom · ▲ solid ring = strongest, ▼ dashed ring = weakest",
+                "Drag to orbit, pinch to zoom · ▲ solid ring = strongest, ▼ dashed = weakest · grey panels = walls (dashed = not measured across)",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             )
@@ -102,7 +109,7 @@ fun ViewerScreen(
 }
 
 @Composable
-private fun CoverageStatsPanel(stats: CoverageStats, palette: SignalPalette) {
+private fun CoverageStatsPanel(stats: CoverageStats, palette: SignalPalette, walls: WallSummary) {
     if (stats.count == 0) return
     ElevatedCard(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
         Row(
@@ -128,6 +135,13 @@ private fun CoverageStatsPanel(stats: CoverageStats, palette: SignalPalette) {
                 StatLine("Weakest", "${stats.weakest?.rssi ?: "—"} dBm")
                 StatLine("Mean / spread", "${stats.meanRssi} dBm / ${stats.spreadDb} dB")
                 StatLine("Weak zones (≤ ${CoverageStats.POOR_RSSI})", "${stats.weakZoneCount}")
+                if (walls.count > 0) {
+                    StatLine(
+                        "Walls (measured / seen)",
+                        "${walls.measured}/${walls.count}" +
+                            (walls.worstLossDb?.let { " · worst −${it.toInt()} dB" } ?: ""),
+                    )
+                }
             }
         }
     }

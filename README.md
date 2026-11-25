@@ -5,7 +5,7 @@ space — including multi-level buildings like a house. Each measurement is plac
 in 3D by **fusing three positioning sources**, then visualised as a rotatable,
 colour-coded point cloud.
 
-> Current version: **0.2.0** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
+> Current version: **0.5.0** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
 
 ## Download & install
 
@@ -60,6 +60,22 @@ ui/         Sessions / Capture / Viewer screens, theme
 The **fusion and capture logic has no compile-time dependency on SceneView** —
 `ArCaptureSurface.kt` is the only AR-rendering file, so the pipeline is testable
 and resilient to SceneView API changes.
+
+## Walls and signal loss
+
+While mapping, ARCore's vertical-plane detection records wall-like surfaces. The
+viewer then estimates **how many dB each wall costs**:
+
+1. Find pairs of nearby points (≤ 3 m) whose straight line passes through the wall.
+2. Compare the strongest access point seen at both points.
+3. Subtract the normal distance fall-off, estimated from nearby pairs that cross no wall.
+4. Report the median, with confidence from the number of pairs.
+
+**Limits:** ARCore can't tell a wall from any other flat vertical surface (a
+fridge side, a wardrobe), and blank or glass walls may be missed. A wall only shows
+a loss if you measured on **both sides** of it, so walk through doorways and around
+rooms. Expect real-home estimates to be noisier than lab numbers (multipath, people,
+furniture), and treat them as relative ("this wall costs much more than that one").
 
 ## WiFi scanning note
 

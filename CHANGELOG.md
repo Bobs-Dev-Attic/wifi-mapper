@@ -7,6 +7,28 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-25
+### Added
+- **Wall detection.** ARCore vertical-plane finding is enabled during capture (with
+  the Depth API where supported, e.g. Galaxy S25 Edge). Wall-like vertical
+  surfaces (≥ 0.6 m wide) are recorded per session; the capture screen shows a
+  live "Walls seen" count. Walls autosave every 10 s and again on stop.
+- **Signal loss per wall.** For pairs of nearby points (≤ 3 m) on opposite sides of
+  a wall, the strongest shared access point's RSSI drop is measured, the normal
+  distance fall-off (from pairs crossing no wall) is subtracted, and the median is
+  reported with a confidence level (low / medium / high by number of pairs).
+  Walls only seen from one side show "no data".
+- 3D viewer draws walls as translucent grey panels labelled with their loss
+  (dashed outline = not measured across), a **Walls** toggle chip, floor
+  filtering for walls, and a walls summary line in the stats panel.
+- Unit tests (run in CI): wall-loss analyzer against synthetic surveys with known
+  losses, segment/wall intersection, and a check that the database migration SQL
+  matches Room's exported schema.
+
+### Changed
+- Database schema v2 (new `walls` table) with a migration that keeps existing maps.
+- CI now runs `testDebugUnitTest` in addition to building the APK.
+
 ## [0.4.0] - 2026-11-25
 ### Added
 - **Colour-blind-friendly palettes** with an in-viewer picker (palette icon in the
@@ -72,7 +94,8 @@ All notable changes to WiFi Mapper are documented here. The format follows
 - Device tuning notes for the Samsung Galaxy S25 Edge (ARCore + Depth, barometer,
   Wi-Fi 7 / 6 GHz, One UI 7 dynamic colour).
 
-[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.5.0
 [0.4.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.4.0
 [0.3.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.3.0
 [0.2.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.2.0

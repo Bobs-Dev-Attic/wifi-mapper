@@ -90,3 +90,31 @@ data class SamplePointWithReadings(
     @Relation(parentColumn = "id", entityColumn = "pointId")
     val readings: List<ApReadingEntity>,
 )
+
+/**
+ * A wall-like vertical surface detected by ARCore during a session (AR-local
+ * frame). Signal loss is NOT stored: it's derived in the viewer from the
+ * session's measurements, so it improves if the analysis improves.
+ */
+@Entity(
+    tableName = "walls",
+    foreignKeys = [ForeignKey(
+        entity = SessionEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["sessionId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+    indices = [Index("sessionId")],
+)
+data class WallEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val sessionId: Long,
+    val cx: Float,
+    val cy: Float,
+    val cz: Float,
+    val nx: Float,
+    val nz: Float,
+    val width: Float,
+    val height: Float,
+    val floorIndex: Int,
+)
