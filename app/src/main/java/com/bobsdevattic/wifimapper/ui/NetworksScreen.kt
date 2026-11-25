@@ -166,7 +166,7 @@ private fun WifiTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit) {
                             "${n.rssi} dBm · ${SignalDetails.qualityLabel(n.rssi)} · " +
                                 "${n.band} ch ${n.channel ?: "?"} · ${n.width}",
                         )
-                        Text(listOfNotNull(n.standard, n.security, n.distanceRangeText).joinToString(" · "))
+                        Text(listOfNotNull(n.standard, n.security, com.bobsdevattic.wifimapper.model.UnitFormat.range(n.distanceRange, LocalDistanceUnit.current)).joinToString(" · "))
                         Text(n.bssid + if (n.ageSeconds > 20) " · seen ${n.ageSeconds}s ago" else "",
                             style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
                     }
@@ -219,7 +219,7 @@ private fun BleTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit) {
                 headlineContent = { Text(d.displayName) },
                 supportingContent = {
                     Column {
-                        Text("${d.rssi} dBm · ${SignalDetails.qualityLabel(d.rssi)} · ~${formatDistance(d.approxDistanceM)}")
+                        Text("${d.rssi} dBm · ${SignalDetails.qualityLabel(d.rssi)} · ~${formatDistance(d.approxDistanceM, LocalDistanceUnit.current)}")
                         Text(listOfNotNull(
                             d.manufacturer,
                             d.txPower?.let { "TX $it dBm" },
@@ -259,12 +259,8 @@ fun SignalBars(rssi: Int, modifier: Modifier = Modifier) {
     }
 }
 
-fun formatDistance(m: Double): String = when {
-    m < 1 -> "<1 m"
-    m < 10 -> "%.1f m".format(m)
-    m < 100 -> "${m.toInt()} m"
-    else -> ">100 m"
-}
+fun formatDistance(m: Double, unit: com.bobsdevattic.wifimapper.model.DistanceUnit): String =
+    com.bobsdevattic.wifimapper.model.UnitFormat.distance(m, unit)
 
 @Composable
 private fun Notice(text: String) =

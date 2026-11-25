@@ -126,7 +126,7 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
                     supportingContent = {
                         Text(
                             when {
-                                heard != null -> "Heard now · ${heard.rssi} dBm · ~${formatDistance(heard.approxDistanceM)}"
+                                heard != null -> "Heard now · ${heard.rssi} dBm · ~${formatDistance(heard.approxDistanceM, LocalDistanceUnit.current)}"
                                 !d.supportsLe -> "Classic Bluetooth only: can't be tracked by signal while it's not connected"
                                 else -> "Not heard right now (off, out of range, or in its case)"
                             }
@@ -148,7 +148,7 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
                 leadingContent = { SignalBars(d.rssi) },
                 headlineContent = { Text(d.displayName) },
                 supportingContent = {
-                    Text(listOfNotNull("${d.rssi} dBm", SignalDetails.qualityLabel(d.rssi), "~${formatDistance(d.approxDistanceM)}")
+                    Text(listOfNotNull("${d.rssi} dBm", SignalDetails.qualityLabel(d.rssi), "~${formatDistance(d.approxDistanceM, LocalDistanceUnit.current)}")
                         .joinToString(" · "))
                 },
                 modifier = Modifier.clickable { onFind(RadarTarget.Ble(d.address, d.displayName, d.txPower)) },

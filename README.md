@@ -5,7 +5,7 @@ space — including multi-level buildings like a house. Each measurement is plac
 in 3D by **fusing three positioning sources**, then visualised as a rotatable,
 colour-coded point cloud.
 
-> Current version: **0.10.0** (shown in Settings → About; see [CHANGELOG.md](CHANGELOG.md)).
+> Current version: **0.11.0** (shown in Settings → About; see [CHANGELOG.md](CHANGELOG.md)).
 
 ## Download & install
 
@@ -101,6 +101,11 @@ Tap the AR icon (home screen, or in a map's 3D view):
 
 Orbs show through walls (no occlusion), and saved-map alignment is only as good as
 your starting spot (~0.5–1 m).
+
+## Units
+
+Distances can be shown in **metres or feet** (Settings → Units; defaults to your
+region). Tracker rings use round numbers in each: 1/3/10/30 m or 3/10/30/100 ft.
 
 ## Radar styles
 

@@ -1,6 +1,7 @@
 package com.bobsdevattic.wifimapper.settings
 
 import android.content.Context
+import com.bobsdevattic.wifimapper.model.DistanceUnit
 import com.bobsdevattic.wifimapper.viz.SignalPalette
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,6 +52,13 @@ class AppSettings(context: Context) {
     private val _pingSound = MutableStateFlow(prefs.getBoolean(KEY_PING, true))
     val pingSound: StateFlow<Boolean> = _pingSound
 
+    private val _distanceUnit = MutableStateFlow(
+        DistanceUnit.entries.firstOrNull { it.name == prefs.getString(KEY_UNITS, null) } ?: DistanceUnit.default()
+    )
+    /** Metres or feet for every distance shown. Defaults from the phone's region. */
+    val distanceUnit: StateFlow<DistanceUnit> = _distanceUnit
+    fun setDistanceUnit(u: DistanceUnit) { prefs.edit().putString(KEY_UNITS, u.name).apply(); _distanceUnit.value = u }
+
     fun setRadarStyle(s: RadarStyle) { prefs.edit().putString(KEY_RADAR, s.name).apply(); _radarStyle.value = s }
     fun setPingSound(on: Boolean) { prefs.edit().putBoolean(KEY_PING, on).apply(); _pingSound.value = on }
 
@@ -69,6 +77,7 @@ class AppSettings(context: Context) {
         private const val KEY_SPACING = "floor_spacing_m"
         private const val KEY_RADAR = "radar_style"
         private const val KEY_PING = "radar_ping_sound"
+        private const val KEY_UNITS = "distance_unit"
         const val DEFAULT_SPACING_M = 3.0f
         const val MIN_SPACING_M = 2.0f
         const val MAX_SPACING_M = 6.0f
