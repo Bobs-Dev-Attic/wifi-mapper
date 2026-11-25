@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bobsdevattic.wifimapper.model.CompassMath
 import com.bobsdevattic.wifimapper.model.RadarAccumulator
 import com.bobsdevattic.wifimapper.model.SignalDetails
 import com.bobsdevattic.wifimapper.radar.RadarViewModel
@@ -82,6 +83,9 @@ fun TrackerRadar(
         }
     }
 
+    val cardinalPaint = remember { compassPaint(34f, android.graphics.Color.rgb(0x3F, 0xE6, 0xFF), bold = true) }
+    val minorPaint = remember { compassPaint(22f, android.graphics.Color.rgb(0x1B, 0x9F, 0xC0), bold = false) }
+    val northPaint = remember { compassPaint(40f, android.graphics.Color.rgb(0xFF, 0x3B, 0x2F), bold = true) }
     val textPaint = remember {
         android.graphics.Paint().apply {
             isAntiAlias = true; textSize = 26f; color = android.graphics.Color.rgb(0x3F, 0xE6, 0xFF)
@@ -130,27 +134,67 @@ fun TrackerRadar(
                 }
             }
 
-            // Range rings: glow + bright segmented arc + bracket ticks.
+            // The grid is locked to the compass: features sit at fixed bearings and
+            // sweep across the fan as you turn. rel(b) = where bearing b appears.
+            val heading = ui.headingDeg
+            fun rel(bearing: Float) = CompassMath.relative(bearing, heading)
+            val headingRad = Math.toRadians(heading.toDouble()).toFloat()
+
+            // Range rings: glow + segmented arc whose dashes rotate with heading,
+            // plus bracket ticks every 15° of bearing.
             RINGS.forEachIndexed { idx, d ->
                 val r = radiusFor(d, maxR)
-                glowArc(cx, cy, r, if (idx == RINGS.lastIndex) null else PathEffect.dashPathEffect(floatArrayOf(38f, 10f)))
-                for (deg in -90..90 step 15) {
-                    val p1 = at(deg.toFloat(), r - 7f); val p2 = at(deg.toFloat(), r + 7f)
-                    drawLine(Cyan.copy(alpha = 0.8f), p1, p2, strokeWidth = 2f)
+                val dashes = if (idx == RINGS.lastIndex) null
+                    else PathEffect.dashPathEffect(floatArrayOf(38f, 10f), phase = r * headingRad)
+                glowArc(cx, cy, r, dashes)
+                for (b in 0 until 360 step 15) {
+                    val a = rel(b.toFloat()); if (abs(a) > 90f) continue
+                    drawLine(Cyan.copy(alpha = 0.8f), at(a, r - 7f), at(a, r + 7f), strokeWidth = 2f)
                 }
-                val lbl = at(84f, r)
-                drawContext.canvas.nativeCanvas.drawText(
-                    if (d >= 10) "${d.toInt()}m" else "${d.toInt()}m", lbl.x + 6f, lbl.y - 6f, textPaint,
-                )
+                val lbl = at(84f, r)                       // distance labels stay screen-fixed
+                drawContext.canvas.nativeCanvas.drawText("${d.toInt()}m", lbl.x + 6f, lbl.y - 6f, textPaint)
             }
 
-            // Spokes with terminal dots.
-            for (deg in -60..60 step 30) {
-                val inner = at(deg.toFloat(), maxR * 0.16f); val outer = at(deg.toFloat(), maxR)
-                drawLine(Cyan.copy(alpha = 0.15f), inner, outer, strokeWidth = 7f)
-                drawLine(Cyan.copy(alpha = 0.75f), inner, outer, strokeWidth = 2f)
-                drawCircle(Cyan, 5f, outer); drawCircle(Cyan.copy(alpha = 0.25f), 11f, outer)
+            // Spokes every 30° of bearing, with terminal dots; compass labels outside.
+            val spokeEnd = maxR * 0.93f
+            for (b in 0 until 360 step 30) {
+                val a = rel(b.toFloat()); if (abs(a) > 88f) continue     // not along the baseline
+                val isNorth = b == 0
+                val col = if (isNorth) RangeRed else Cyan
+                val inner = at(a, maxR * 0.16f); val outer = at(a, spokeEnd)
+                drawLine(col.copy(alpha = 0.15f), inner, outer, strokeWidth = 7f)
+                drawLine(col.copy(alpha = if (isNorth) 0.95f else 0.75f), inner, outer, strokeWidth = if (isNorth) 3f else 2f)
+                drawCircle(col, 5f, outer); drawCircle(col.copy(alpha = 0.25f), 11f, outer)
             }
+            CompassMath.POINTS.forEach { (b, name, cardinal) ->
+                val a = rel(b); if (abs(a) > 86f) return@forEach
+                val p = at(a, maxR * 0.985f)
+                val paint = when {
+                    name == "N" -> northPaint
+                    cardinal -> cardinalPaint
+                    else -> minorPaint
+                }
+                drawContext.canvas.nativeCanvas.drawText(name, p.x, p.y + paint.textSize / 3f, paint)
+            }
+
+            // North is behind you: show which way to turn to face it.
+            val northRel = rel(0f)
+            if (abs(northRel) > 86f) {
+                val left = northRel < 0
+                val x = if (left) cx - maxR + 8f else cx + maxR - 8f
+                northPaint.textAlign = if (left) android.graphics.Paint.Align.LEFT else android.graphics.Paint.Align.RIGHT
+                // Raised clear of the distance labels near the baseline.
+                drawContext.canvas.nativeCanvas.drawText(if (left) "\u25C0 N" else "N \u25B6", x, cy - maxR * 0.22f, northPaint)
+                northPaint.textAlign = android.graphics.Paint.Align.CENTER
+            }
+
+            // Fixed "you are facing" notch at the top of the fan.
+            val notch = Path().apply {
+                val t = at(0f, maxR * 0.945f)
+                moveTo(t.x, t.y + 14f); lineTo(t.x - 10f, t.y - 4f); lineTo(t.x + 10f, t.y - 4f); close()
+            }
+            drawPath(notch, Color.White.copy(alpha = 0.9f))
+
             // Baseline.
             drawLine(Cyan.copy(alpha = 0.6f), Offset(cx - maxR, cy), Offset(cx + maxR, cy), strokeWidth = 2f)
 
@@ -243,4 +287,14 @@ private fun DrawScope.glowArc(cx: Float, cy: Float, r: Float, effect: PathEffect
     val tl = Offset(cx - r, cy - r); val sz = Size(r * 2, r * 2)
     drawArc(Cyan.copy(alpha = 0.12f), 180f, 180f, false, tl, sz, style = Stroke(14f))
     drawArc(Cyan.copy(alpha = 0.9f), 180f, 180f, false, tl, sz, style = Stroke(2.5f, cap = StrokeCap.Butt, pathEffect = effect))
+}
+
+private fun compassPaint(size: Float, color: Int, bold: Boolean) = android.graphics.Paint().apply {
+    isAntiAlias = true
+    textSize = size
+    this.color = color
+    textAlign = android.graphics.Paint.Align.CENTER
+    typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE,
+        if (bold) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+    setShadowLayer(8f, 0f, 0f, color)                // phosphor glow
 }
