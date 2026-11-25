@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.bobsdevattic.wifimapper.viz.CoverageStats
 import com.bobsdevattic.wifimapper.viz.PointCloud3DView
 import com.bobsdevattic.wifimapper.viz.SignalColor
 import com.bobsdevattic.wifimapper.viz.ViewerViewModel
@@ -74,17 +75,62 @@ fun ViewerScreen(
                         "No points on this floor.",
                         Modifier.align(Alignment.Center),
                     )
-                    else -> PointCloud3DView(points = ui.points)
+                    else -> PointCloud3DView(
+                        points = ui.points,
+                        strongest = ui.stats.strongest,
+                        weakest = ui.stats.weakest,
+                    )
                 }
                 SignalLegend(Modifier.align(Alignment.BottomStart).padding(16.dp))
             }
 
+            CoverageStatsPanel(stats = ui.stats)
+
             Text(
-                "${ui.points.size} points · drag to orbit, pinch to zoom",
+                "Drag to orbit, pinch to zoom · MAX/MIN rings mark strongest & weakest signal",
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(12.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun CoverageStatsPanel(stats: CoverageStats) {
+    if (stats.count == 0) return
+    val scoreColor = androidx.compose.ui.graphics.Color.hsv(
+        120f * (stats.uniformity / 100f), 0.75f, 0.9f,
+    )
+    ElevatedCard(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+        Row(
+            Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "${stats.uniformity}%",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = scoreColor,
+                )
+                Text("uniformity", style = MaterialTheme.typography.labelSmall)
+                Text(stats.uniformityLabel, style = MaterialTheme.typography.labelMedium)
+            }
+            VerticalDivider(Modifier.height(72.dp).padding(horizontal = 16.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                StatLine("Strongest", "${stats.strongest?.rssi ?: "—"} dBm")
+                StatLine("Weakest", "${stats.weakest?.rssi ?: "—"} dBm")
+                StatLine("Mean / spread", "${stats.meanRssi} dBm / ${stats.spreadDb} dB")
+                StatLine("Weak zones (≤ ${CoverageStats.POOR_RSSI})", "${stats.weakZoneCount}")
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatLine(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodySmall)
+        Text(value, style = MaterialTheme.typography.bodyMedium)
     }
 }
 

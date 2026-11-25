@@ -12,13 +12,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import com.bobsdevattic.wifimapper.model.Vector3
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** A single renderable point: world position (metres), colour, and floor. */
-data class CloudPoint(val position: Vector3, val color: Color, val floor: Int)
+/** A single renderable point: world position (metres), colour, floor, RSSI (dBm). */
+data class CloudPoint(val position: Vector3, val color: Color, val floor: Int, val rssi: Int)
 
 /**
  * Lightweight interactive 3D scatter/heatmap rendered on a Compose [Canvas].
@@ -32,10 +34,24 @@ data class CloudPoint(val position: Vector3, val color: Color, val floor: Int)
 fun PointCloud3DView(
     points: List<CloudPoint>,
     modifier: Modifier = Modifier,
+    // When set, these points are ringed and labelled (strongest / weakest signal).
+    // They must be instances from [points] so projection matches.
+    strongest: CloudPoint? = null,
+    weakest: CloudPoint? = null,
 ) {
     var yaw by remember { mutableFloatStateOf(0.6f) }
     var pitch by remember { mutableFloatStateOf(0.5f) }
     var scale by remember { mutableFloatStateOf(1f) }
+
+    val labelPaint = remember {
+        android.graphics.Paint().apply {
+            color = android.graphics.Color.WHITE
+            textSize = 34f
+            isAntiAlias = true
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setShadowLayer(6f, 0f, 0f, android.graphics.Color.BLACK)
+        }
+    }
 
     // Centre and auto-fit the cloud once per data set.
     val centroid = remember(points) {
@@ -102,6 +118,19 @@ fun PointCloud3DView(
                     radius = radius,
                     center = Offset(sx, sy),
                 )
+
+                // Highlight + label the strongest / weakest signal points.
+                val isMax = strongest != null && pt === strongest
+                val isMin = weakest != null && pt === weakest
+                if (isMax || isMin) {
+                    val ringColor = if (isMax) Color(0xFF00E676) else Color(0xFFFF5252)
+                    drawCircle(Color.White, radius + 9f, Offset(sx, sy), style = Stroke(width = 5f))
+                    drawCircle(ringColor, radius + 15f, Offset(sx, sy), style = Stroke(width = 3f))
+                    val label = (if (isMax) "MAX  " else "MIN  ") + "${pt.rssi} dBm"
+                    drawContext.canvas.nativeCanvas.drawText(
+                        label, sx + radius + 18f, sy - radius - 6f, labelPaint,
+                    )
+                }
             }
         }
     }
