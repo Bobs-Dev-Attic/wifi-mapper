@@ -203,7 +203,7 @@ fun FinderScreen(
                         style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        if (heardRecently) "${ui.rssi?.roundToInt()} dBm · ~${ui.distanceM?.let(::formatDistance) ?: "?"}"
+                        if (heardRecently) "${ui.rssi?.roundToInt()} dBm · ~${ui.distanceM?.let { formatDistance(it, LocalDistanceUnit.current) } ?: "?"}"
                         else ui.secondsSinceHeard?.let { "last heard ${it}s ago" } ?: "listening…",
                         style = MaterialTheme.typography.bodyLarge,
                     )

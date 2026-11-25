@@ -77,7 +77,7 @@ fun RadarScreen(
             Text(
                 listOfNotNull(
                     ui.rssi?.let(SignalDetails::qualityLabel),
-                    ui.distanceRange?.let { "roughly ${SignalDetails.formatRange(it)} away" },
+                    ui.distanceRange?.let { "roughly ${com.bobsdevattic.wifimapper.model.UnitFormat.range(it, LocalDistanceUnit.current)} away" },
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
             )

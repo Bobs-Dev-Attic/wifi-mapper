@@ -21,7 +21,7 @@ data class WifiNetworkInfo(
     val standard: String? get() = wifiStandardCode?.let(SignalDetails::standardLabel)
     val security: String get() = SignalDetails.securityOf(capabilities)
     val approxDistanceM: Double get() = SignalDetails.estimateWifiDistanceM(rssi, frequencyMhz)
-    val distanceRangeText: String get() = SignalDetails.formatRange(SignalDetails.wifiDistanceRangeM(rssi, frequencyMhz))
+    val distanceRange: Pair<Double, Double> get() = SignalDetails.wifiDistanceRangeM(rssi, frequencyMhz)
 }
 
 /** One Bluetooth LE device seen advertising. */

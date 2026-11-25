@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bobsdevattic.wifimapper.BuildConfig
 import com.bobsdevattic.wifimapper.WifiMapperApp
+import com.bobsdevattic.wifimapper.model.DistanceUnit
+import com.bobsdevattic.wifimapper.model.UnitFormat
 import com.bobsdevattic.wifimapper.settings.AppSettings
 import com.bobsdevattic.wifimapper.settings.RadarStyle
 import com.bobsdevattic.wifimapper.settings.ThemeMode
@@ -39,6 +41,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenPermissions: () -> Unit) {
     val spacing by settings.floorSpacingM.collectAsStateWithLifecycle()
     val radarStyle by settings.radarStyle.collectAsStateWithLifecycle()
     val pingSound by settings.pingSound.collectAsStateWithLifecycle()
+    val units by settings.distanceUnit.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -76,6 +79,21 @@ fun SettingsScreen(onBack: () -> Unit, onOpenPermissions: () -> Unit) {
                             style = MaterialTheme.typography.bodySmall)
                     }
                     Switch(checked = dynamic, onCheckedChange = settings::setDynamicColor)
+                }
+            }
+
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            SectionTitle("Units")
+            DistanceUnit.entries.forEach { u ->
+                RadioRow(selected = units == u, onClick = { settings.setDistanceUnit(u) }) {
+                    Column {
+                        Text(u.label)
+                        Text(
+                            if (u == DistanceUnit.METRIC) "e.g. 5.9-22 m, tracker rings 1/3/10/30 m"
+                            else "e.g. 19-72 ft, tracker rings 3/10/30/100 ft",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
             }
 
@@ -119,7 +137,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenPermissions: () -> Unit) {
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             SectionTitle("3D view")
-            Text("Floor spacing: ${"%.1f".format(spacing)} m")
+            Text("Floor spacing: ${UnitFormat.length(spacing.toDouble(), units)}")
             Slider(
                 value = spacing,
                 onValueChange = { settings.setFloorSpacingM((it * 2).roundToInt() / 2f) },  // 0.5 m steps

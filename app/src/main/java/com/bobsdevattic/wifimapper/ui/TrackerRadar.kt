@@ -33,6 +33,7 @@ import com.bobsdevattic.wifimapper.model.CompassMath
 import com.bobsdevattic.wifimapper.model.RadarAccumulator
 import com.bobsdevattic.wifimapper.model.SignalDetails
 import com.bobsdevattic.wifimapper.model.TrackerMath
+import com.bobsdevattic.wifimapper.model.UnitFormat
 import com.bobsdevattic.wifimapper.radar.TrackerAudio
 import com.bobsdevattic.wifimapper.radar.RadarViewModel
 import kotlin.math.abs
@@ -48,8 +49,6 @@ private val Cyan = Color(0xFF3FE6FF)
 private val CyanDim = Color(0xFF1B6F86)
 private val RangeRed = Color(0xFFFF3B2F)
 
-/** Range rings (metres) and the log scale that places them. */
-private val RINGS = listOf(1.0, 3.0, 10.0, 30.0)
 
 private fun radiusFor(distanceM: Double, maxR: Float): Float =
     (0.14f + 0.86f * TrackerMath.rangeFraction(distanceM)) * maxR   // inner 14% is the emitter
@@ -68,6 +67,9 @@ fun TrackerRadar(
     // Ping wave 0→1, restarted each cycle; cadence follows proximity.
     val pulse = remember { Animatable(0f) }
     val latest by rememberUpdatedState(ui)
+    // Range rings in the chosen unit: 1/3/10/30 m or 3/10/30/100 ft.
+    val unit = LocalDistanceUnit.current
+    val rings = remember(unit) { UnitFormat.trackerRings(unit) }
     val audio = remember { TrackerAudio.create() }
     DisposableEffect(audio) { onDispose { audio?.release() } }
     LaunchedEffect(pingSound) {
@@ -136,7 +138,7 @@ fun TrackerRadar(
                     val path = Path().apply {
                         val r0 = maxR * 0.14f
                         moveTo(at(rel - w / 2, r0).x, at(rel - w / 2, r0).y)
-                        val outer = radiusFor(RINGS.last(), maxR)          // stop at the 30 m ring
+                        val outer = radiusFor(rings.last().first, maxR)    // stop at the outer ring
                         for (k in 0..4) { val p = at(rel - w / 2 + w * k / 4, outer); lineTo(p.x, p.y) }
                         val e = at(rel + w / 2, r0); lineTo(e.x, e.y); close()
                     }
@@ -152,9 +154,9 @@ fun TrackerRadar(
 
             // Range rings: glow + segmented arc whose dashes rotate with heading,
             // plus bracket ticks every 15° of bearing.
-            RINGS.forEachIndexed { idx, d ->
+            rings.forEachIndexed { idx, (d, ringLabel) ->
                 val r = radiusFor(d, maxR)
-                val dashes = if (idx == RINGS.lastIndex) null
+                val dashes = if (idx == rings.lastIndex) null
                     else PathEffect.dashPathEffect(floatArrayOf(38f, 10f), phase = r * headingRad)
                 glowArc(cx, cy, r, dashes)
                 for (b in 0 until 360 step 15) {
@@ -162,7 +164,7 @@ fun TrackerRadar(
                     drawLine(Cyan.copy(alpha = 0.8f), at(a, r - 7f), at(a, r + 7f), strokeWidth = 2f)
                 }
                 val lbl = at(84f, r)                       // distance labels stay screen-fixed
-                drawContext.canvas.nativeCanvas.drawText("${d.toInt()}m", lbl.x + 6f, lbl.y - 6f, textPaint)
+                drawContext.canvas.nativeCanvas.drawText(ringLabel, lbl.x + 6f, lbl.y - 6f, textPaint)
             }
 
             // Spokes every 30° of bearing, with terminal dots; compass labels outside.
@@ -267,7 +269,7 @@ fun TrackerRadar(
                 ReadoutText("HDG ${"%03d".format(ui.headingDeg.roundToInt() % 360)}°")
             }
             Text(
-                ui.distanceRange?.let { SignalDetails.formatRange(it) } ?: "--- m",
+                ui.distanceRange?.let { UnitFormat.range(it, unit) } ?: UnitFormat.emptyRange(unit),
                 style = TextStyle(
                     color = RangeRed, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 30.sp,
                 ),

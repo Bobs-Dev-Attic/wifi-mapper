@@ -103,11 +103,8 @@ object SignalDetails {
     fun bleDistanceRangeM(rssi: Int, rssiAt1m: Int = -59): Pair<Double, Double> =
         estimateBleDistanceM(rssi, rssiAt1m, 3.5) to estimateBleDistanceM(rssi, rssiAt1m, 2.0)
 
-    /** "6-22 m" style, like a tracker readout. */
-    fun formatRange(range: Pair<Double, Double>): String {
-        fun f(m: Double) = if (m < 10) "%.1f".format(m).removeSuffix(".0") else m.toInt().toString()
-        return "${f(range.first)}-${f(range.second)} m"
-    }
+    /** "6-22 m" style, like a tracker readout (metric; see [UnitFormat.range] for ft). */
+    fun formatRange(range: Pair<Double, Double>): String = UnitFormat.range(range, DistanceUnit.METRIC)
 
     /** Bluetooth SIG company IDs for a few common manufacturers. */
     fun manufacturerName(companyId: Int): String? = when (companyId) {

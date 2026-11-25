@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,6 +18,7 @@ import com.bobsdevattic.wifimapper.settings.ThemeMode
 import com.bobsdevattic.wifimapper.ui.ArOverlayScreen
 import com.bobsdevattic.wifimapper.ui.CaptureScreen
 import com.bobsdevattic.wifimapper.ui.FindDeviceScreen
+import com.bobsdevattic.wifimapper.ui.LocalDistanceUnit
 import com.bobsdevattic.wifimapper.ui.FinderScreen
 import com.bobsdevattic.wifimapper.ui.FloorsScreen
 import com.bobsdevattic.wifimapper.ui.NetworksScreen
@@ -57,12 +59,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val mode by settings.themeMode.collectAsStateWithLifecycle()
             val dynamic by settings.dynamicColor.collectAsStateWithLifecycle()
+            val units by settings.distanceUnit.collectAsStateWithLifecycle()
             val dark = when (mode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
-            WifiMapperTheme(darkTheme = dark, dynamicColor = dynamic) { AppRoot() }
+            WifiMapperTheme(darkTheme = dark, dynamicColor = dynamic) {
+                CompositionLocalProvider(LocalDistanceUnit provides units) { AppRoot() }
+            }
         }
     }
 }
