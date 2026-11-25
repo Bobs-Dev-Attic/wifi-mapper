@@ -51,4 +51,22 @@ interface WifiMapperDao {
 
     @Query("DELETE FROM sessions WHERE id=:sessionId")
     suspend fun deleteSession(sessionId: Long)
+
+    // --- Walls ---------------------------------------------------------------
+
+    @Insert
+    suspend fun insertWalls(walls: List<WallEntity>)
+
+    @Query("DELETE FROM walls WHERE sessionId=:sessionId")
+    suspend fun deleteWalls(sessionId: Long)
+
+    /** Replace a session's walls with the latest ARCore snapshot, atomically. */
+    @Transaction
+    suspend fun replaceWalls(sessionId: Long, walls: List<WallEntity>) {
+        deleteWalls(sessionId)
+        insertWalls(walls)
+    }
+
+    @Query("SELECT * FROM walls WHERE sessionId=:sessionId")
+    suspend fun getWalls(sessionId: Long): List<WallEntity>
 }

@@ -7,6 +7,7 @@ import com.bobsdevattic.wifimapper.WifiMapperApp
 import com.bobsdevattic.wifimapper.model.FusedSample
 import com.bobsdevattic.wifimapper.model.Vector3
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,6 +18,7 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
     private val appRef = app as WifiMapperApp
     private val repo = appRef.repository
     val poseSource = appRef.poseSource
+    val wallSource = appRef.wallSource
 
     private val wifi = WifiScanner(app)
     private val location = LocationProvider(app)
@@ -33,6 +35,7 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
         val bestRssi: Int? = null,
         val hasBarometer: Boolean = true,
         val anchorSet: Boolean = false,
+        val wallsDetected: Int = 0,
         val autoCapture: Boolean = true,
         val status: String = "Idle",
     )
@@ -54,6 +57,7 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
     fun startSession(name: String) {
         if (_ui.value.sessionId != null) return
         viewModelScope.launch {
+            wallSource.clear()   // a new AR session starts with a fresh frame
             val sessionId = repo.startSession(name, baselinePressure)
             _ui.value = _ui.value.copy(
                 sessionId = sessionId, sessionName = name, status = "Capturing",
@@ -92,6 +96,19 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
                     repo.setAnchor(sessionId, fix)
                     _ui.value = _ui.value.copy(anchorSet = true)
                 }
+            }
+        }
+        // Walls seen by ARCore -> live count, plus a periodic save so a crash or
+        // app kill doesn't lose them. (Also saved on stop.)
+        jobs += viewModelScope.launch {
+            wallSource.walls.collect { walls ->
+                _ui.value = _ui.value.copy(wallsDetected = walls.size)
+            }
+        }
+        jobs += viewModelScope.launch {
+            while (true) {
+                delay(WALL_AUTOSAVE_MS)
+                repo.replaceWalls(sessionId, wallSource.walls.value)
             }
         }
         // Pose stream -> update tracking state + auto-capture on movement.
@@ -145,6 +162,11 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
     fun stopSession() {
         jobs.forEach { it.cancel() }
         jobs.clear()
+        // Final wall save with the most complete snapshot ARCore produced.
+        _ui.value.sessionId?.let { id ->
+            val walls = wallSource.walls.value
+            viewModelScope.launch { repo.replaceWalls(id, walls) }
+        }
         _ui.value = UiState(hasBarometer = barometer.hasBarometer)
         lastSamplePos = null
         baselinePressure = null
@@ -153,5 +175,9 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
     override fun onCleared() {
         super.onCleared()
         jobs.forEach { it.cancel() }
+    }
+
+    private companion object {
+        const val WALL_AUTOSAVE_MS = 10_000L
     }
 }

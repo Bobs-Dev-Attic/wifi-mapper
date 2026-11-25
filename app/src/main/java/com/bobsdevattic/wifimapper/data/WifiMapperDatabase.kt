@@ -6,8 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [SessionEntity::class, SamplePointEntity::class, ApReadingEntity::class],
-    version = 1,
+    entities = [SessionEntity::class, SamplePointEntity::class, ApReadingEntity::class, WallEntity::class],
+    version = 2,
     exportSchema = true,
 )
 abstract class WifiMapperDatabase : RoomDatabase() {
@@ -22,7 +22,10 @@ abstract class WifiMapperDatabase : RoomDatabase() {
                     context.applicationContext,
                     WifiMapperDatabase::class.java,
                     "wifi_mapper.db",
-                ).build().also { instance = it }
+                )
+                    // Keep users' existing maps across schema changes.
+                    .addMigrations(*Migrations.ALL)
+                    .build().also { instance = it }
             }
     }
 }

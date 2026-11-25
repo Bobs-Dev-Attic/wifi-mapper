@@ -60,7 +60,11 @@ fun CaptureScreen(
 
             // Camera / AR background while a session is active and AR is usable.
             if (ui.sessionId != null && arOk && permState.allPermissionsGranted) {
-                ArCaptureSurface(poseSource = vm.poseSource, modifier = Modifier.fillMaxSize())
+                ArCaptureSurface(
+                    poseSource = vm.poseSource,
+                    wallSource = vm.wallSource,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
 
             if (!permState.allPermissionsGranted) {
@@ -116,6 +120,7 @@ private fun StatusOverlay(
                 StatRow("Best RSSI", ui.bestRssi?.let { "$it dBm" } ?: "—", null)
                 StatRow("Points", ui.pointCount.toString(), null)
                 StatRow("GPS anchor", if (ui.anchorSet) "set" else "waiting…", null)
+                StatRow("Walls seen", ui.wallsDetected.toString(), null)
                 if (!ui.hasBarometer) {
                     Text("No barometer: floor from AR height only.",
                         style = MaterialTheme.typography.bodySmall)

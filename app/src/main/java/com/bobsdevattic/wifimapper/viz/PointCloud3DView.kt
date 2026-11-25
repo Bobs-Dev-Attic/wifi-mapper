@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
@@ -39,11 +40,22 @@ fun PointCloud3DView(
     // They must be instances from [points] so projection matches.
     strongest: CloudPoint? = null,
     weakest: CloudPoint? = null,
+    // Detected walls, drawn as translucent panels labelled with signal loss.
+    walls: List<WallRender> = emptyList(),
 ) {
     var yaw by remember { mutableFloatStateOf(0.6f) }
     var pitch by remember { mutableFloatStateOf(0.5f) }
     var scale by remember { mutableFloatStateOf(1f) }
 
+    val wallLabelPaint = remember {
+        android.graphics.Paint().apply {
+            color = android.graphics.Color.WHITE
+            textSize = 30f
+            isAntiAlias = true
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setShadowLayer(6f, 0f, 0f, android.graphics.Color.BLACK)
+        }
+    }
     val labelPaint = remember {
         android.graphics.Paint().apply {
             color = android.graphics.Color.WHITE
@@ -104,6 +116,27 @@ fun PointCloud3DView(
             // Draw a faint ground grid at the baseline floor for spatial reference.
             drawReferenceGrid(centroid, extent, ::project)
 
+            // Wall panels go under the points so measurements stay visible.
+            walls.forEach { w ->
+                val c = w.corners.map { project(it) }
+                val path = Path().apply {
+                    moveTo(c[0].first, c[0].second)
+                    for (i in 1..3) lineTo(c[i].first, c[i].second)
+                    close()
+                }
+                // Neutral grey: walls never compete with the signal palette.
+                drawPath(path, Color(0x40B0BEC5))
+                drawPath(
+                    path, Color(0xCCECEFF1),
+                    style = Stroke(
+                        width = 3f,
+                        // Dashed outline when we couldn't estimate this wall's loss.
+                        pathEffect = if (w.hasEstimate) null
+                            else PathEffect.dashPathEffect(floatArrayOf(12f, 10f)),
+                    ),
+                )
+            }
+
             // Depth sort: far (small/negative depth first) so near points overdraw.
             val projected = points
                 .map { it to project(it.position) }
@@ -143,6 +176,14 @@ fun PointCloud3DView(
                         label, sx + radius + 18f, sy - radius - 6f, labelPaint,
                     )
                 }
+            }
+
+            // Wall loss labels on top of everything.
+            walls.forEach { w ->
+                val (wx, wy, _) = project(w.center)
+                val text = w.label
+                val half = wallLabelPaint.measureText(text) / 2f
+                drawContext.canvas.nativeCanvas.drawText(text, wx - half, wy, wallLabelPaint)
             }
         }
     }
