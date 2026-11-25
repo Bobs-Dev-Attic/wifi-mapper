@@ -39,3 +39,11 @@ data class BleDeviceInfo(
     val approxDistanceM: Double get() =
         SignalDetails.estimateBleDistanceM(rssi, txPower?.let { it - 41 } ?: -59)
 }
+
+/** A device paired (bonded) with this phone. */
+data class PairedDevice(
+    val address: String,
+    val name: String,
+    /** True if it supports Bluetooth LE (LE or dual-mode), so it may advertise. */
+    val supportsLe: Boolean,
+)
