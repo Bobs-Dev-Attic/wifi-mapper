@@ -24,6 +24,7 @@ import com.bobsdevattic.wifimapper.model.SignalDetails
 import com.bobsdevattic.wifimapper.model.TrendDetector
 import com.bobsdevattic.wifimapper.radar.RadarTarget
 import com.bobsdevattic.wifimapper.radar.RadarViewModel
+import com.bobsdevattic.wifimapper.settings.RadarStyle
 import com.bobsdevattic.wifimapper.viz.SignalPalette
 import kotlin.math.cos
 import kotlin.math.min
@@ -46,6 +47,8 @@ fun RadarScreen(
     DisposableEffect(Unit) { onDispose { vm.stop() } }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val palette by vm.settings.palette.collectAsStateWithLifecycle()
+    val style by vm.settings.radarStyle.collectAsStateWithLifecycle()
+    val ping by vm.settings.pingSound.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -74,7 +77,7 @@ fun RadarScreen(
             Text(
                 listOfNotNull(
                     ui.rssi?.let(SignalDetails::qualityLabel),
-                    ui.distanceM?.let { "roughly ${formatDistance(it)} away" },
+                    ui.distanceRange?.let { "roughly ${SignalDetails.formatRange(it)} away" },
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -93,7 +96,23 @@ fun RadarScreen(
                     color = MaterialTheme.colorScheme.error)
             }
 
-            RadarPlot(ui, palette, Modifier.fillMaxWidth().aspectRatio(1f))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                RadarStyle.entries.forEach { st ->
+                    FilterChip(
+                        selected = style == st,
+                        onClick = { vm.settings.setRadarStyle(st) },
+                        label = { Text(if (st == RadarStyle.TRACKER) "Tracker" else "Classic") },
+                    )
+                }
+                if (style == RadarStyle.TRACKER) {
+                    FilterChip(selected = ping, onClick = { vm.settings.setPingSound(!ping) }, label = { Text("Ping") })
+                }
+            }
+
+            when (style) {
+                RadarStyle.TRACKER -> TrackerRadar(ui, pingSound = ping, modifier = Modifier.fillMaxWidth())
+                RadarStyle.CLASSIC -> RadarPlot(ui, palette, Modifier.fillMaxWidth().aspectRatio(1f))
+            }
 
             DirectionText(ui)
 

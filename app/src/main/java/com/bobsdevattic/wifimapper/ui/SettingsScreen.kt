@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bobsdevattic.wifimapper.BuildConfig
 import com.bobsdevattic.wifimapper.WifiMapperApp
 import com.bobsdevattic.wifimapper.settings.AppSettings
+import com.bobsdevattic.wifimapper.settings.RadarStyle
 import com.bobsdevattic.wifimapper.settings.ThemeMode
 import com.bobsdevattic.wifimapper.viz.SignalPalette
 import kotlin.math.roundToInt
@@ -34,6 +35,8 @@ fun SettingsScreen(onBack: () -> Unit) {
     val dynamic by settings.dynamicColor.collectAsStateWithLifecycle()
     val palette by settings.palette.collectAsStateWithLifecycle()
     val spacing by settings.floorSpacingM.collectAsStateWithLifecycle()
+    val radarStyle by settings.radarStyle.collectAsStateWithLifecycle()
+    val pingSound by settings.pingSound.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -87,6 +90,16 @@ fun SettingsScreen(onBack: () -> Unit) {
                             .background(Brush.horizontalGradient(p.gradient()))
                     )
                 }
+            }
+
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            SectionTitle("Radar")
+            RadarStyle.entries.forEach { st ->
+                RadioRow(selected = radarStyle == st, onClick = { settings.setRadarStyle(st) }) { Text(st.label) }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Ping sound", Modifier.weight(1f))
+                Switch(checked = pingSound, onCheckedChange = settings::setPingSound)
             }
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp))

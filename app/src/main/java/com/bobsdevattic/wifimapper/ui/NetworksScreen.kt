@@ -166,7 +166,7 @@ private fun WifiTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit) {
                             "${n.rssi} dBm · ${SignalDetails.qualityLabel(n.rssi)} · " +
                                 "${n.band} ch ${n.channel ?: "?"} · ${n.width}",
                         )
-                        Text(listOfNotNull(n.standard, n.security, "~${formatDistance(n.approxDistanceM)}").joinToString(" · "))
+                        Text(listOfNotNull(n.standard, n.security, n.distanceRangeText).joinToString(" · "))
                         Text(n.bssid + if (n.ageSeconds > 20) " · seen ${n.ageSeconds}s ago" else "",
                             style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
                     }

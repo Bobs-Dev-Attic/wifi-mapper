@@ -7,6 +7,11 @@ import kotlinx.coroutines.flow.StateFlow
 
 enum class ThemeMode(val label: String) { SYSTEM("Follow system"), LIGHT("Light"), DARK("Dark") }
 
+/** How the radar is drawn. */
+enum class RadarStyle(val label: String) {
+    TRACKER("Motion tracker"), CLASSIC("Classic compass")
+}
+
 /**
  * User preferences, persisted in SharedPreferences and exposed as StateFlows so
  * every screen (and the app theme) updates immediately when one changes.
@@ -38,6 +43,17 @@ class AppSettings(context: Context) {
     /** Vertical distance between stacked floors in the 3D view (metres). */
     val floorSpacingM: StateFlow<Float> = _floorSpacingM
 
+    private val _radarStyle = MutableStateFlow(
+        RadarStyle.entries.firstOrNull { it.name == prefs.getString(KEY_RADAR, null) } ?: RadarStyle.TRACKER
+    )
+    val radarStyle: StateFlow<RadarStyle> = _radarStyle
+
+    private val _pingSound = MutableStateFlow(prefs.getBoolean(KEY_PING, true))
+    val pingSound: StateFlow<Boolean> = _pingSound
+
+    fun setRadarStyle(s: RadarStyle) { prefs.edit().putString(KEY_RADAR, s.name).apply(); _radarStyle.value = s }
+    fun setPingSound(on: Boolean) { prefs.edit().putBoolean(KEY_PING, on).apply(); _pingSound.value = on }
+
     fun setPalette(p: SignalPalette) { prefs.edit().putString(KEY_PALETTE, p.name).apply(); _palette.value = p }
     fun setThemeMode(m: ThemeMode) { prefs.edit().putString(KEY_THEME, m.name).apply(); _themeMode.value = m }
     fun setDynamicColor(on: Boolean) { prefs.edit().putBoolean(KEY_DYNAMIC, on).apply(); _dynamicColor.value = on }
@@ -51,6 +67,8 @@ class AppSettings(context: Context) {
         private const val KEY_THEME = "theme_mode"
         private const val KEY_DYNAMIC = "dynamic_color"
         private const val KEY_SPACING = "floor_spacing_m"
+        private const val KEY_RADAR = "radar_style"
+        private const val KEY_PING = "radar_ping_sound"
         const val DEFAULT_SPACING_M = 3.0f
         const val MIN_SPACING_M = 2.0f
         const val MAX_SPACING_M = 6.0f

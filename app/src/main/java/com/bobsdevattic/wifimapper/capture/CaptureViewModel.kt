@@ -25,6 +25,7 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
     private val location = LocationProvider(app)
     private val barometer = BarometerProvider(app)
     private val fusion = FusionEngine()
+    private val ble = BleScanner(app)
 
     data class UiState(
         // Set-up (before capture): adding to an existing map, or a brand-new one.
@@ -44,6 +45,8 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
         val hasBarometer: Boolean = true,
         val anchorSet: Boolean = false,
         val wallsDetected: Int = 0,
+        val recordingBle: Boolean = false,
+        val bleDevicesNearby: Int = 0,
         val autoCapture: Boolean = true,
         val status: String = "Idle",
     )
@@ -56,6 +59,7 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
     @Volatile private var latestPressure: Float? = null
     @Volatile private var baselinePressure: Float? = null
     @Volatile private var lastSamplePos: Vector3? = null
+    @Volatile private var latestBle: List<BleDeviceInfo> = emptyList()
 
     private var jobs = mutableListOf<Job>()
 
@@ -90,7 +94,7 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
      * @param floorLabel e.g. "Ground floor", "Upstairs"
      * @param above place the new floor above (true) or below (false) existing ones
      */
-    fun startCapture(mapName: String, floorLabel: String, above: Boolean = true) {
+    fun startCapture(mapName: String, floorLabel: String, above: Boolean = true, recordBle: Boolean = false) {
         if (_ui.value.sessionId != null) return
         viewModelScope.launch {
             wallSource.clear()   // a new AR session starts with a fresh frame
@@ -102,9 +106,11 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
                 sessionName = if (target != null) _ui.value.targetMapName else mapName,
                 floorId = floorId,
                 floorLabel = floorLabel,
+                recordingBle = recordBle,
                 status = "Capturing",
             )
             collectSensors(sessionId, floorId)
+            if (recordBle) collectBle()
         }
     }
 
@@ -168,6 +174,25 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Bluetooth LE devices heard recently are attached to each captured point. */
+    private fun collectBle() {
+        jobs += viewModelScope.launch {
+            ble.devices(staleAfterMs = BLE_FRESH_MS) { status ->
+                if (status != BleScanner.Status.Ok) {
+                    _ui.value = _ui.value.copy(recordingBle = false, status = "Bluetooth not recorded: " + when (status) {
+                        BleScanner.Status.Off -> "Bluetooth is off"
+                        BleScanner.Status.Unsupported -> "not supported"
+                        is BleScanner.Status.Failed -> status.reason
+                        else -> ""
+                    })
+                }
+            }.collect { devices ->
+                latestBle = devices
+                _ui.value = _ui.value.copy(bleDevicesNearby = devices.size)
+            }
+        }
+    }
+
     private fun currentFloor(pose: PoseSource.PoseState): Int {
         val p = latestPressure; val b = baselinePressure
         return if (p != null && b != null)
@@ -187,7 +212,9 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
         val sample = fusion.fuse(poseSource.current(), latestPressure, baselinePressure, readings)
         lastSamplePos = sample.position
         viewModelScope.launch {
-            repo.saveSample(sessionId, floorId, sample)
+            val now = System.currentTimeMillis()
+            val bleNow = latestBle.filter { now - it.lastSeenMs <= BLE_FRESH_MS }
+            repo.saveSample(sessionId, floorId, sample, bleNow)
             _ui.value = _ui.value.copy(
                 pointCount = _ui.value.pointCount + 1,
                 floor = sample.floorIndex,
@@ -214,6 +241,7 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
         }
         _ui.value = UiState(hasBarometer = barometer.hasBarometer)
         lastSamplePos = null
+        latestBle = emptyList()
         baselinePressure = null
     }
 
@@ -224,5 +252,7 @@ class CaptureViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val WALL_AUTOSAVE_MS = 10_000L
+        /** A Bluetooth reading counts for a point if heard within this window. */
+        const val BLE_FRESH_MS = 5_000L
     }
 }

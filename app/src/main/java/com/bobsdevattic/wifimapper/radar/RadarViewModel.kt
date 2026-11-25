@@ -57,6 +57,10 @@ class RadarViewModel(app: Application) : AndroidViewModel(app) {
         val contrastDb: Float = 0f,
         val trend: TrendDetector.Trend = TrendDetector.Trend.UNKNOWN,
         val distanceM: Double? = null,
+        /** Plausible distance range (near, far) in metres, for the tracker readout. */
+        val distanceRange: Pair<Double, Double>? = null,
+        /** 0 (weak / far) .. 1 (strong / near): drives the ping cadence. */
+        val proximity: Float = 0f,
         val samples: Int = 0,
         /** True when the source can't update live (throttled Wi-Fi scans). */
         val slowUpdates: Boolean = false,
@@ -143,6 +147,12 @@ class RadarViewModel(app: Application) : AndroidViewModel(app) {
                 is RadarTarget.Wifi -> SignalDetails.estimateWifiDistanceM(rssi, t.freqMhz)
                 RadarTarget.ConnectedWifi -> SignalDetails.estimateWifiDistanceM(rssi, 5000)
             },
+            distanceRange = when (val t = s.target) {
+                is RadarTarget.Ble -> SignalDetails.bleDistanceRangeM(rssi, t.txPower?.let { it - 41 } ?: -59)
+                is RadarTarget.Wifi -> SignalDetails.wifiDistanceRangeM(rssi, t.freqMhz)
+                RadarTarget.ConnectedWifi -> SignalDetails.wifiDistanceRangeM(rssi, 5000)
+            },
+            proximity = ((rssi + 95) / 55f).coerceIn(0f, 1f),
             message = if (s.message == "Not connected to Wi-Fi.") null else s.message,
         )
     }

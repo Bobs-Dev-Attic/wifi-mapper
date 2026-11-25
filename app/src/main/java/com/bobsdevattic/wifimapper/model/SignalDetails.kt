@@ -69,14 +69,29 @@ object SignalDetails {
     }
 
     /**
-     * Very rough Wi-Fi distance (m) from RSSI using free-space path loss plus a
-     * typical router transmit power. Walls and antennas make this ±2–3×.
+     * Typical RSSI ~1 m from a home router/AP (dBm), by band. Higher bands lose
+     * more over the same distance.
      */
-    fun estimateWifiDistanceM(rssi: Int, freqMhz: Int, txPowerDbm: Int = 20): Double {
-        // FSPL(dB) = 20log10(d_m) + 20log10(f_MHz) − 27.55  →  solve for d
-        val pathLoss = txPowerDbm - rssi
-        return 10.0.pow((pathLoss - 20 * log10(freqMhz.toDouble()) + 27.55) / 20.0)
+    fun wifiRssiAt1m(freqMhz: Int): Int = when {
+        freqMhz < 3000 -> -28
+        freqMhz < 5900 -> -33
+        else -> -36
     }
+
+    /**
+     * Rough Wi-Fi distance (m) via the indoor log-distance model:
+     * d = 10^((RSSI₁ₘ − RSSI) / (10·n)), with n ≈ 2.7 for a typical home.
+     * (v0.6–0.7 used free-space loss, which overestimates indoors by ~3–5×.)
+     */
+    fun estimateWifiDistanceM(rssi: Int, freqMhz: Int, exponent: Double = 2.7): Double =
+        10.0.pow((wifiRssiAt1m(freqMhz) - rssi) / (10 * exponent))
+
+    /**
+     * Plausible distance range (m): open plan (n = 2.0) gives the far end, a
+     * cluttered, walled home (n = 3.5) the near end. Honest about uncertainty.
+     */
+    fun wifiDistanceRangeM(rssi: Int, freqMhz: Int): Pair<Double, Double> =
+        estimateWifiDistanceM(rssi, freqMhz, 3.5) to estimateWifiDistanceM(rssi, freqMhz, 2.0)
 
     /**
      * Rough BLE distance (m) from RSSI and the advertised (or assumed) RSSI at
@@ -84,6 +99,15 @@ object SignalDetails {
      */
     fun estimateBleDistanceM(rssi: Int, rssiAt1m: Int = -59, exponent: Double = 2.5): Double =
         10.0.pow((rssiAt1m - rssi) / (10 * exponent))
+
+    fun bleDistanceRangeM(rssi: Int, rssiAt1m: Int = -59): Pair<Double, Double> =
+        estimateBleDistanceM(rssi, rssiAt1m, 3.5) to estimateBleDistanceM(rssi, rssiAt1m, 2.0)
+
+    /** "6-22 m" style, like a tracker readout. */
+    fun formatRange(range: Pair<Double, Double>): String {
+        fun f(m: Double) = if (m < 10) "%.1f".format(m).removeSuffix(".0") else m.toInt().toString()
+        return "${f(range.first)}-${f(range.second)} m"
+    }
 
     /** Bluetooth SIG company IDs for a few common manufacturers. */
     fun manufacturerName(companyId: Int): String? = when (companyId) {

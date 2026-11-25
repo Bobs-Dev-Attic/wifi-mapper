@@ -97,7 +97,7 @@ fun CaptureScreen(
                 ui.sessionId == null -> SetupStep(
                     ui = ui,
                     addingToExisting = sessionId != null,
-                    onStart = vm::startCapture,
+                    onStart = { name, label, above, ble -> vm.startCapture(name, label, above, ble) },
                 )
                 else -> StatusOverlay(
                     ui = ui,
@@ -115,8 +115,13 @@ fun CaptureScreen(
 private fun SetupStep(
     ui: CaptureViewModel.UiState,
     addingToExisting: Boolean,
-    onStart: (mapName: String, floorLabel: String, above: Boolean) -> Unit,
+    onStart: (mapName: String, floorLabel: String, above: Boolean, recordBle: Boolean) -> Unit,
 ) {
+    val blePerms = rememberMultiplePermissionsState(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf(Manifest.permission.BLUETOOTH_SCAN)
+        else emptyList()
+    )
+    var recordBle by remember { mutableStateOf(true) }
     val existing = ui.existingFloors
     var mapName by remember { mutableStateOf("") }
     var floorLabel by remember(existing.size, addingToExisting) {
@@ -169,6 +174,24 @@ private fun SetupStep(
             }
         }
 
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Also record Bluetooth devices")
+                Text(
+                    if (recordBle && !blePerms.allPermissionsGranted) "Needs the Bluetooth permission \u2014 tap to grant"
+                    else "Lets you colour the 3D map by a Bluetooth device and estimate where it is.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Switch(
+                checked = recordBle,
+                onCheckedChange = { on ->
+                    recordBle = on
+                    if (on && !blePerms.allPermissionsGranted) blePerms.launchMultiplePermissionRequest()
+                },
+            )
+        }
+
         ElevatedCard {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -197,7 +220,12 @@ private fun SetupStep(
         }
 
         Button(
-            onClick = { onStart(mapName.ifBlank { "Untitled map" }, floorLabel.ifBlank { "Floor" }, above) },
+            onClick = {
+                onStart(
+                    mapName.ifBlank { "Untitled map" }, floorLabel.ifBlank { "Floor" }, above,
+                    recordBle && blePerms.allPermissionsGranted,
+                )
+            },
             enabled = addingToExisting.not() || ui.targetSessionId != null,
             modifier = Modifier.fillMaxWidth(),
         ) { Text("I'm at the start point — start mapping") }
@@ -231,6 +259,7 @@ private fun StatusOverlay(
                 StatRow("Points", ui.pointCount.toString(), null)
                 StatRow("GPS anchor", if (ui.anchorSet) "set" else "waiting…", null)
                 StatRow("Walls seen", ui.wallsDetected.toString(), null)
+                StatRow("Bluetooth devices", if (ui.recordingBle) ui.bleDevicesNearby.toString() else "not recorded", null)
                 Text(ui.status, style = MaterialTheme.typography.bodySmall,
                     fontFamily = FontFamily.Monospace)
             }

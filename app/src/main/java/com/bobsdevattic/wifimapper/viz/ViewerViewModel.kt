@@ -8,6 +8,7 @@ import com.bobsdevattic.wifimapper.data.SamplePointWithReadings
 import com.bobsdevattic.wifimapper.model.FloorInfo
 import com.bobsdevattic.wifimapper.model.FloorLayout
 import com.bobsdevattic.wifimapper.model.MeasuredPoint
+import com.bobsdevattic.wifimapper.model.SourceLocator
 import com.bobsdevattic.wifimapper.model.Vector3
 import com.bobsdevattic.wifimapper.model.WallLossAnalyzer
 import com.bobsdevattic.wifimapper.model.WallObservation
@@ -37,6 +38,9 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
         val walls: List<WallRender> = emptyList(),
         val wallSummary: WallSummary = WallSummary(0, 0, null),
         val showWalls: Boolean = true,
+        val sources: List<SignalSource> = listOf(SignalSource.STRONGEST),
+        val colorBy: SignalSource = SignalSource.STRONGEST,
+        val markers: List<MapMarker> = emptyList(),
         val loading: Boolean = true,
     )
 
@@ -51,6 +55,7 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
 
     private var allPoints: List<CloudPoint> = emptyList()
     private var allWalls: List<WallRender> = emptyList()
+    private var allMarkers: List<MapMarker> = emptyList()
     private var loadedSessionId: Long? = null
 
     init {
@@ -87,7 +92,12 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
                 }.toMap()
             }
 
-            _ui.value = _ui.value.copy(sessionName = session?.name ?: "Map $sessionId", loading = false)
+            _ui.value = _ui.value.copy(
+                sessionName = session?.name ?: "Map $sessionId",
+                sources = SignalSourceCatalog.build(raw),
+                colorBy = SignalSource.STRONGEST,
+                loading = false,
+            )
             rebuild(settings.palette.value, settings.floorSpacingM.value)
         }
     }
@@ -100,14 +110,27 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
         fun rankOf(floorId: Long?) = floorId?.let { ranks[it] } ?: 0
         fun lift(v: Vector3, rank: Int) = v.copy(y = v.y + FloorLayout.yOffset(rank, spacingM))
 
+        val source = _ui.value.colorBy
         allPoints = raw.map { pwr ->
             val rank = rankOf(pwr.point.floorId)
+            val rssi = SignalSourceCatalog.rssiAt(pwr, source)
             CloudPoint(
                 position = lift(Vector3(pwr.point.x, pwr.point.y, pwr.point.z), rank),
-                color = SignalColor.forRssi(pwr.point.bestRssi, palette),
+                // Not heard here: neutral grey, excluded from stats.
+                color = if (rssi != null) SignalColor.forRssi(rssi, palette) else UNHEARD,
                 floor = rank,
-                rssi = pwr.point.bestRssi,
+                rssi = rssi ?: -100,
+                measured = rssi != null,
             )
+        }
+        // Estimated transmitter locations for a specific network / device.
+        allMarkers = SignalSourceCatalog.transmitters(raw, source).mapNotNull { (label, pick) ->
+            val readings = raw.mapNotNull { pwr ->
+                pick(pwr)?.let { r -> Triple(lift(Vector3(pwr.point.x, pwr.point.y, pwr.point.z), rankOf(pwr.point.floorId)), r, rankOf(pwr.point.floorId)) }
+            }
+            val est = SourceLocator.estimate(readings.map { it.first to it.second }) ?: return@mapNotNull null
+            val peakFloor = readings.maxBy { it.second }.third
+            MapMarker(est.position, "\u2248 $label", peakFloor)
         }
         allWalls = rawWalls.mapNotNull { (wall, floorId) ->
             val loss = wallLosses[wall] ?: return@mapNotNull null
@@ -122,6 +145,12 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setFloorFilter(floor: Int?) = applyFilter(floor)
 
+    /** Colour the map by a different signal source (and show its estimated location). */
+    fun setColorBy(source: SignalSource) {
+        _ui.value = _ui.value.copy(colorBy = source)
+        rebuild(settings.palette.value, settings.floorSpacingM.value)
+    }
+
     fun toggleWalls() { _ui.value = _ui.value.copy(showWalls = !_ui.value.showWalls) }
 
     /** Quick palette switch from the viewer; persisted via Settings. */
@@ -132,12 +161,19 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
     private fun applyFilter(floor: Int?) {
         val shown = if (floor == null) allPoints else allPoints.filter { it.floor == floor }
         val shownWalls = if (floor == null) allWalls else allWalls.filter { it.floor == floor }
+        val shownMarkers = if (floor == null) allMarkers else allMarkers.filter { it.floor == floor }
         _ui.value = _ui.value.copy(
             floorFilter = floor,
             points = shown,
-            stats = CoverageStats.from(shown),
+            markers = shownMarkers,
+            // Only points where the chosen source was heard count towards stats.
+            stats = CoverageStats.from(shown.filter { it.measured }),
             walls = shownWalls,
             wallSummary = WallSummary.of(shownWalls),
         )
+    }
+
+    private companion object {
+        val UNHEARD = androidx.compose.ui.graphics.Color(0x66808080)
     }
 }

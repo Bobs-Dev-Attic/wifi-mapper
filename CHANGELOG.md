@@ -7,6 +7,33 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-25
+### Added
+- **Bluetooth devices on the 3D map.** Mapping can also record nearby Bluetooth LE
+  devices at each point (optional switch in set-up; needs the Bluetooth permission).
+- **Color by** selector in the 3D view: strongest Wi-Fi (as before), a specific
+  **Wi-Fi network**, or a specific **Bluetooth device**. Points where it wasn't
+  heard show grey and are left out of the stats.
+- **Estimated transmitter locations** (◇ markers) for the chosen network or device,
+  from a power-weighted centroid of its strongest readings. Multi-AP / mesh
+  networks get one marker per access point. Unit-tested on simulated surveys
+  (within 1.5 m when the source is inside the walked area).
+- **Motion-tracker radar style** (inspired by the *Aliens* tracker): forward 180°
+  fan with glowing segmented range arcs on a log scale (1/3/10/30 m), spokes,
+  emitter dome, expanding **ping waves** whose rate rises with signal strength
+  (optional ping sound), a target blip at the sweep bearing and estimated range
+  ("BEHIND" when outside the fan), faint sweep returns, and a red digital range
+  readout with signal / heading / bearing / sweep readouts. Tracker and Classic
+  are switchable on the radar screen and in Settings.
+
+### Changed
+- **More realistic distance estimates.** Wi-Fi distance now uses an indoor
+  log-distance model (≈ −33 dBm at 1 m on 5 GHz, exponent 2.7) instead of
+  free-space loss, which overestimated indoors by roughly 3–5× (e.g. −60 dBm
+  showed ~48 m; it's now 5.9–22 m). Ranges are shown instead of single numbers
+  on the radar and Wi-Fi list.
+- Database schema v4 (`ble_readings` table); existing maps are kept.
+
 ## [0.7.0] - 2026-11-25
 ### Added
 - **Find my device** (Bluetooth icon on the home screen):
@@ -151,7 +178,8 @@ All notable changes to WiFi Mapper are documented here. The format follows
 - Device tuning notes for the Samsung Galaxy S25 Edge (ARCore + Depth, barometer,
   Wi-Fi 7 / 6 GHz, One UI 7 dynamic colour).
 
-[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.8.0
 [0.7.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.7.0
 [0.6.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.6.0
 [0.5.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.5.0

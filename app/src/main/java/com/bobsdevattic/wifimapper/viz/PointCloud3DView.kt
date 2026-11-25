@@ -22,7 +22,14 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /** A single renderable point: world position (metres), colour, floor, RSSI (dBm). */
-data class CloudPoint(val position: Vector3, val color: Color, val floor: Int, val rssi: Int)
+data class CloudPoint(
+    val position: Vector3,
+    val color: Color,
+    val floor: Int,
+    val rssi: Int,
+    /** False when the selected signal source wasn't heard at this point. */
+    val measured: Boolean = true,
+)
 
 /**
  * Lightweight interactive 3D scatter/heatmap rendered on a Compose [Canvas].
@@ -42,6 +49,8 @@ fun PointCloud3DView(
     weakest: CloudPoint? = null,
     // Detected walls, drawn as translucent panels labelled with signal loss.
     walls: List<WallRender> = emptyList(),
+    // Estimated transmitter locations (router, mesh node, Bluetooth device).
+    markers: List<MapMarker> = emptyList(),
 ) {
     var yaw by remember { mutableFloatStateOf(0.6f) }
     var pitch by remember { mutableFloatStateOf(0.5f) }
@@ -176,6 +185,19 @@ fun PointCloud3DView(
                         label, sx + radius + 18f, sy - radius - 6f, labelPaint,
                     )
                 }
+            }
+
+            // Estimated transmitter locations: a diamond with a label.
+            markers.forEach { m ->
+                val (mx, my, _) = project(m.position)
+                val d = 22f
+                val diamond = Path().apply {
+                    moveTo(mx, my - d); lineTo(mx + d, my); lineTo(mx, my + d); lineTo(mx - d, my); close()
+                }
+                drawPath(diamond, Color(0xFF111111), style = Stroke(width = 9f))
+                drawPath(diamond, Color.White, style = Stroke(width = 4f))
+                drawCircle(Color.White, 5f, Offset(mx, my))
+                drawContext.canvas.nativeCanvas.drawText(m.label, mx + d + 8f, my + 10f, wallLabelPaint)
             }
 
             // Wall loss labels on top of everything.
