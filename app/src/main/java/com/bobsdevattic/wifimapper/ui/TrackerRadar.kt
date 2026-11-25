@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +43,7 @@ import com.bobsdevattic.wifimapper.model.SignalDetails
 import com.bobsdevattic.wifimapper.model.TrackerMath
 import com.bobsdevattic.wifimapper.model.UnitFormat
 import com.bobsdevattic.wifimapper.radar.TrackerAudio
+import com.bobsdevattic.wifimapper.radar.TrackerHaptics
 import com.bobsdevattic.wifimapper.radar.RadarViewModel
 import kotlin.math.abs
 import kotlin.math.cos
@@ -69,6 +71,7 @@ private fun radiusFor(distanceM: Double, maxR: Float, outerM: Double): Float =
 fun TrackerRadar(
     ui: RadarViewModel.UiState,
     pingSound: Boolean,
+    pingVibrate: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // Ping wave 0→1, restarted each cycle; cadence follows proximity.
@@ -83,6 +86,8 @@ fun TrackerRadar(
     val gridAlpha = TrackerMath.gridAlpha(outerM)
     val audio = remember { TrackerAudio.create() }
     DisposableEffect(audio) { onDispose { audio?.release() } }
+    val context = LocalContext.current
+    val haptics = remember { TrackerHaptics.create(context) }
     LaunchedEffect(pingSound) {
         while (true) {
             pulse.snapTo(0f)
@@ -92,15 +97,18 @@ fun TrackerRadar(
         }
     }
 
-    // Return bleep: fires once per sweep, the moment the wave reaches the target's
-    // range. The wave's progress and the blip's radius share the same log scale.
-    LaunchedEffect(pingSound) {
+    // Return bleep + buzz: fires once per sweep, the moment the wave reaches the
+    // target's range. The wave's progress and the blip's radius share the same log scale.
+    LaunchedEffect(pingSound, pingVibrate) {
         var prev = 0f
         snapshotFlow { pulse.value }.collect { now ->
             val range = latest.distanceRange
-            if (pingSound && range != null && latest.rssi != null) {
+            if ((pingSound || pingVibrate) && range != null && latest.rssi != null) {
                 val target = TrackerMath.rangeFraction(sqrt(range.first * range.second), outerM)
-                if (TrackerMath.crossed(prev, now, target)) audio?.blip(latest.proximity)
+                if (TrackerMath.crossed(prev, now, target)) {
+                    if (pingSound) audio?.blip(latest.proximity)
+                    if (pingVibrate) haptics?.blip(latest.proximity)
+                }
             }
             prev = now
         }

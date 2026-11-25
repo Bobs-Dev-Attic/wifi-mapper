@@ -49,6 +49,7 @@ fun RadarScreen(
     val palette by vm.settings.palette.collectAsStateWithLifecycle()
     val style by vm.settings.radarStyle.collectAsStateWithLifecycle()
     val ping by vm.settings.pingSound.collectAsStateWithLifecycle()
+    val buzz by vm.settings.pingVibrate.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -106,11 +107,12 @@ fun RadarScreen(
                 }
                 if (style == RadarStyle.TRACKER) {
                     FilterChip(selected = ping, onClick = { vm.settings.setPingSound(!ping) }, label = { Text("Sound") })
+                    FilterChip(selected = buzz, onClick = { vm.settings.setPingVibrate(!buzz) }, label = { Text("Vibrate") })
                 }
             }
 
             when (style) {
-                RadarStyle.TRACKER -> TrackerRadar(ui, pingSound = ping, modifier = Modifier.fillMaxWidth())
+                RadarStyle.TRACKER -> TrackerRadar(ui, pingSound = ping, pingVibrate = buzz, modifier = Modifier.fillMaxWidth())
                 RadarStyle.CLASSIC -> RadarPlot(ui, palette, Modifier.fillMaxWidth().aspectRatio(1f))
             }
 

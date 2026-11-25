@@ -7,6 +7,15 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-25
+### Added
+- **Tracker blip vibration.** The phone buzzes the moment the ping wave reaches
+  the blip, in step with the return bleep. The buzz gets longer and firmer as you
+  get closer (20 → 60 ms; stronger on phones with amplitude control, like the
+  Galaxy S25 Edge). Toggle it with the new **Vibrate** chip on the radar or in
+  Settings → Radar → Tracker vibration; it works with Sound off, for quiet hunting.
+- `VIBRATE` permission (a normal permission, granted automatically).
+
 ## [0.13.0] - 2026-11-25
 ### Added
 - **Tracker radar: strongest direction highlighted.** The sweep returns now show

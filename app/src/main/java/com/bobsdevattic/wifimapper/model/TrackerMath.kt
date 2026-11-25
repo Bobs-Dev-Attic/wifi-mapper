@@ -50,6 +50,12 @@ object TrackerMath {
     fun crossed(prev: Float, now: Float, threshold: Float): Boolean = prev < threshold && now >= threshold
 
     /** Return-bleep pitch: ~900 Hz far away, ~2 kHz right on top of it. */
+    /** Blip buzz length: a short tap far away, a firmer knock up close. */
+    fun blipVibrationMs(proximity: Float): Long = (20 + 40 * proximity.coerceIn(0f, 1f)).toLong()
+
+    /** Blip buzz strength (1..255 amplitude) rising with proximity. */
+    fun blipVibrationAmplitude(proximity: Float): Int = (70 + 185 * proximity.coerceIn(0f, 1f)).toInt().coerceIn(1, 255)
+
     fun blipPitchHz(proximity: Float): Float = 900f + 1100f * proximity.coerceIn(0f, 1f)
 }
 

@@ -28,6 +28,8 @@
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <!-- Read the names of paired devices for "Find my device" (Android 12+). -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Tracker radar: buzz when the ping reaches the blip (normal permission, auto-granted). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
 
     <!-- Barometer. Not all devices have one; we handle absence at runtime. -->
