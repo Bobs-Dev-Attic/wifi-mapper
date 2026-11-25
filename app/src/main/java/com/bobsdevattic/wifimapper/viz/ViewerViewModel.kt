@@ -18,6 +18,7 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
         val points: List<CloudPoint> = emptyList(),
         val floorFilter: Int? = null,     // null = all floors
         val availableFloors: List<Int> = emptyList(),
+        val stats: CoverageStats = CoverageStats.from(emptyList()),
         val loading: Boolean = true,
     )
 
@@ -34,6 +35,7 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
                     position = Vector3(pwr.point.x, pwr.point.y, pwr.point.z),
                     color = SignalColor.forRssi(pwr.point.bestRssi),
                     floor = pwr.point.floorIndex,
+                    rssi = pwr.point.bestRssi,
                 )
             }
             allPoints = points
@@ -41,15 +43,18 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
                 sessionName = session?.name ?: "Session $sessionId",
                 points = points,
                 availableFloors = points.map { it.floor }.distinct().sorted(),
+                stats = CoverageStats.from(points),
                 loading = false,
             )
         }
     }
 
     fun setFloorFilter(floor: Int?) {
+        val shown = if (floor == null) allPoints else allPoints.filter { it.floor == floor }
         _ui.value = _ui.value.copy(
             floorFilter = floor,
-            points = if (floor == null) allPoints else allPoints.filter { it.floor == floor },
+            points = shown,
+            stats = CoverageStats.from(shown),
         )
     }
 }

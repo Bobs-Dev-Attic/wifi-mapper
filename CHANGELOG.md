@@ -7,6 +7,15 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-25
+### Added
+- **Strongest / weakest signal markers** in the 3D viewer: the best and worst
+  measured points are ringed (green MAX / red MIN) and labelled with their RSSI.
+- **Coverage uniformity score** (0–100%) with a qualitative label, shown in a new
+  stats panel along with strongest, weakest, mean RSSI, spread, and a count of
+  weak-signal zones (≤ −75 dBm). Score = `100 × (1 − min(stdDev_dB / 15, 1))`.
+- Stats and markers respect the active floor filter (recomputed per floor).
+
 ## [0.2.0] - 2026-11-25
 ### Added
 - **In-app auto-update.** On launch the app checks GitHub Releases; when a newer
@@ -49,6 +58,7 @@ All notable changes to WiFi Mapper are documented here. The format follows
 - Device tuning notes for the Samsung Galaxy S25 Edge (ARCore + Depth, barometer,
   Wi-Fi 7 / 6 GHz, One UI 7 dynamic colour).
 
-[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.3.0
 [0.2.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.2.0
 [0.1.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.1.0
