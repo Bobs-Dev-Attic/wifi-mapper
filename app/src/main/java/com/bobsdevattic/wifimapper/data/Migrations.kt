@@ -60,5 +60,21 @@ object Migrations {
         }
     }
 
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+    /** v3 → v4 (app 0.8.0): Bluetooth readings per point. */
+    const val CREATE_BLE_READINGS =
+        "CREATE TABLE IF NOT EXISTS `ble_readings` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+            "`pointId` INTEGER NOT NULL, `address` TEXT NOT NULL, `name` TEXT, `rssi` INTEGER NOT NULL, " +
+            "FOREIGN KEY(`pointId`) REFERENCES `sample_points`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
+
+    const val CREATE_BLE_READINGS_INDEX =
+        "CREATE INDEX IF NOT EXISTS `index_ble_readings_pointId` ON `ble_readings` (`pointId`)"
+
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(CREATE_BLE_READINGS)
+            db.execSQL(CREATE_BLE_READINGS_INDEX)
+        }
+    }
+
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 }

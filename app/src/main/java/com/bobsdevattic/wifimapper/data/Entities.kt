@@ -87,11 +87,32 @@ data class ApReadingEntity(
     val frequencyMhz: Int,  // 2412.. (2.4 GHz) or 5xxx / 6xxx
 )
 
-/** A sample point with its AP readings eagerly loaded. */
+/** A sample point with its Wi-Fi and Bluetooth readings eagerly loaded. */
 data class SamplePointWithReadings(
     @Embedded val point: SamplePointEntity,
     @Relation(parentColumn = "id", entityColumn = "pointId")
     val readings: List<ApReadingEntity>,
+    @Relation(parentColumn = "id", entityColumn = "pointId")
+    val bleReadings: List<BleReadingEntity>,
+)
+
+/** One Bluetooth LE device heard at a [SamplePointEntity] (v4+). */
+@Entity(
+    tableName = "ble_readings",
+    foreignKeys = [ForeignKey(
+        entity = SamplePointEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["pointId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+    indices = [Index("pointId")],
+)
+data class BleReadingEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val pointId: Long,
+    val address: String,
+    val name: String?,
+    val rssi: Int,
 )
 
 /**

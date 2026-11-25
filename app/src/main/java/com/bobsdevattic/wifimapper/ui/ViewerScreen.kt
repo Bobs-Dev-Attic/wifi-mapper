@@ -23,6 +23,7 @@ import com.bobsdevattic.wifimapper.viz.SignalPalette
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Palette
+import com.bobsdevattic.wifimapper.viz.SignalSource
 import com.bobsdevattic.wifimapper.viz.ViewerViewModel
 import com.bobsdevattic.wifimapper.viz.WallSummary
 
@@ -64,6 +65,7 @@ fun ViewerScreen(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                ColorByPicker(ui.sources, ui.colorBy, vm::setColorBy)
                 FilterChip(
                     selected = ui.showWalls,
                     onClick = vm::toggleWalls,
@@ -97,6 +99,7 @@ fun ViewerScreen(
                         strongest = ui.stats.strongest,
                         weakest = ui.stats.weakest,
                         walls = if (ui.showWalls) ui.walls else emptyList(),
+                        markers = ui.markers,
                     )
                 }
                 SignalLegend(ui.palette, Modifier.align(Alignment.BottomStart).padding(16.dp))
@@ -105,7 +108,7 @@ fun ViewerScreen(
             CoverageStatsPanel(stats = ui.stats, palette = ui.palette, walls = ui.wallSummary)
 
             Text(
-                "Drag to orbit, pinch to zoom · ▲ solid ring = strongest, ▼ dashed = weakest · grey panels = walls (dashed = not measured across)",
+                "Drag to orbit, pinch to zoom · ▲ solid ring = strongest, ▼ dashed = weakest · grey panels = walls · ◇ = estimated transmitter location · grey points = not heard",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             )
@@ -208,6 +211,53 @@ private fun PalettePicker(current: SignalPalette, onSelect: (SignalPalette) -> U
                         if (p == current) Icon(Icons.Default.Check, contentDescription = "Selected")
                     },
                     onClick = { onSelect(p); open = false },
+                )
+            }
+        }
+    }
+}
+
+/** "Color by" chip: strongest Wi-Fi, a specific network, or a Bluetooth device. */
+@Composable
+private fun ColorByPicker(sources: List<SignalSource>, current: SignalSource, onSelect: (SignalSource) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        AssistChip(
+            onClick = { open = true },
+            label = { Text("Color by: ${current.label}", maxLines = 1) },
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            sources.groupBy { it.kind }.forEach { (kind, items) ->
+                Text(
+                    when (kind) {
+                        SignalSource.Kind.STRONGEST_WIFI -> "Overview"
+                        SignalSource.Kind.WIFI_NETWORK -> "Wi-Fi networks"
+                        SignalSource.Kind.BLUETOOTH -> "Bluetooth devices"
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+                items.forEach { src ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(src.label)
+                                if (src.kind != SignalSource.Kind.STRONGEST_WIFI) {
+                                    Text("heard at ${src.pointCount} points", style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        },
+                        trailingIcon = { if (src.key == current.key) Icon(Icons.Default.Check, "Selected") },
+                        onClick = { onSelect(src); open = false },
+                    )
+                }
+            }
+            if (sources.none { it.kind == SignalSource.Kind.BLUETOOTH }) {
+                Text(
+                    "No Bluetooth devices in this map. Turn on \u201cAlso record Bluetooth devices\u201d when mapping.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).widthIn(max = 280.dp),
                 )
             }
         }

@@ -5,7 +5,7 @@ space — including multi-level buildings like a house. Each measurement is plac
 in 3D by **fusing three positioning sources**, then visualised as a rotatable,
 colour-coded point cloud.
 
-> Current version: **0.7.0** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
+> Current version: **0.8.0** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
 
 ## Download & install
 
@@ -81,6 +81,20 @@ it; the warmer/colder trend helps as you walk closer.
 Live updates work for your **connected Wi-Fi** and **Bluetooth** devices. Other Wi-Fi
 networks only refresh when Android allows a scan (about 4 per 2 minutes) unless you
 turn off *Developer options → Wi-Fi scan throttling*.
+
+## Colour by network or device, and find the router on the map
+
+In the 3D view, **Color by** switches between the strongest Wi-Fi, one specific Wi-Fi
+network, or one Bluetooth device (if you mapped with "Also record Bluetooth devices"
+on). For a specific network or device, a ◇ marks its **estimated location**: one per
+access point for mesh networks. It's a power-weighted average of where the signal
+was strongest, so it can only place a source inside or near the area you walked.
+
+## Radar styles
+
+The radar has a **motion-tracker** style (forward 180° fan, ping waves that speed
+up as the signal strengthens, a blip at the target's bearing and range, red range
+readout) and a **classic** compass style. Switch on the radar screen or in Settings.
 
 ## Find my Bluetooth device
 

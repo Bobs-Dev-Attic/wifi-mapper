@@ -30,7 +30,13 @@ class MeasurementRepository(private val dao: WifiMapperDao) {
         dao.updateBaseline(sessionId, pressureHpa)
 
     /** Persist one fused measurement and its per-AP readings. */
-    suspend fun saveSample(sessionId: Long, floorId: Long, sample: FusedSample): Long {
+    /** Persist one fused measurement, its Wi-Fi readings and any Bluetooth devices heard. */
+    suspend fun saveSample(
+        sessionId: Long,
+        floorId: Long,
+        sample: FusedSample,
+        ble: List<com.bobsdevattic.wifimapper.capture.BleDeviceInfo> = emptyList(),
+    ): Long {
         val best = sample.readings.maxByOrNull { it.rssi }?.rssi ?: -100
         val point = SamplePointEntity(
             sessionId = sessionId,
@@ -43,7 +49,7 @@ class MeasurementRepository(private val dao: WifiMapperDao) {
             apCount = sample.readings.size,
             floorId = floorId,
         )
-        return dao.insertSample(point) { pointId ->
+        return dao.insertSample(point, readings = { pointId ->
             sample.readings.map {
                 ApReadingEntity(
                     pointId = pointId,
@@ -51,7 +57,9 @@ class MeasurementRepository(private val dao: WifiMapperDao) {
                     rssi = it.rssi, frequencyMhz = it.frequencyMhz,
                 )
             }
-        }
+        }, bleReadings = { pointId ->
+            ble.map { BleReadingEntity(pointId = pointId, address = it.address, name = it.name, rssi = it.rssi) }
+        })
     }
 
     fun observeSessions(): Flow<List<SessionEntity>> = dao.observeSessions()

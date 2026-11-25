@@ -6,8 +6,9 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [SessionEntity::class, SamplePointEntity::class, ApReadingEntity::class, WallEntity::class, FloorEntity::class],
-    version = 3,
+    entities = [SessionEntity::class, SamplePointEntity::class, ApReadingEntity::class, WallEntity::class, FloorEntity::class,
+        BleReadingEntity::class],
+    version = 4,
     exportSchema = true,
 )
 abstract class WifiMapperDatabase : RoomDatabase() {

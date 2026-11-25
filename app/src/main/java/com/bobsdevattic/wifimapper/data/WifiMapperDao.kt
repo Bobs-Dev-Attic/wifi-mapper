@@ -24,11 +24,19 @@ interface WifiMapperDao {
     @Insert
     suspend fun insertReadings(readings: List<ApReadingEntity>)
 
-    /** Insert a fused sample (point + its readings) atomically. */
+    @Insert
+    suspend fun insertBleReadings(readings: List<BleReadingEntity>)
+
+    /** Insert a fused sample (point + its Wi-Fi and Bluetooth readings) atomically. */
     @Transaction
-    suspend fun insertSample(point: SamplePointEntity, readings: (Long) -> List<ApReadingEntity>): Long {
+    suspend fun insertSample(
+        point: SamplePointEntity,
+        readings: (Long) -> List<ApReadingEntity>,
+        bleReadings: (Long) -> List<BleReadingEntity>,
+    ): Long {
         val pointId = insertPoint(point)
         insertReadings(readings(pointId))
+        insertBleReadings(bleReadings(pointId))
         return pointId
     }
 
