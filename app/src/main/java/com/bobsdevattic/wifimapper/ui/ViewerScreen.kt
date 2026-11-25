@@ -22,6 +22,7 @@ import com.bobsdevattic.wifimapper.viz.SignalColor
 import com.bobsdevattic.wifimapper.viz.SignalPalette
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material.icons.filled.Palette
 import com.bobsdevattic.wifimapper.viz.SignalSource
 import com.bobsdevattic.wifimapper.viz.ViewerViewModel
@@ -33,6 +34,7 @@ fun ViewerScreen(
     sessionId: Long,
     onBack: () -> Unit,
     onManageFloors: () -> Unit,
+    onOpenAr: () -> Unit,
     vm: ViewerViewModel = viewModel(),
 ) {
     LaunchedEffect(sessionId) { vm.load(sessionId) }
@@ -48,6 +50,9 @@ fun ViewerScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onOpenAr) {
+                        Icon(Icons.Default.ViewInAr, contentDescription = "View this map in AR")
+                    }
                     IconButton(onClick = onManageFloors) {
                         Icon(Icons.Default.Layers, contentDescription = "Floors")
                     }

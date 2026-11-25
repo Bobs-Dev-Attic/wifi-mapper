@@ -7,6 +7,23 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-25
+### Added
+- **AR signal view** (AR icon on the home screen, and on a map's 3D view):
+  - **Live paint:** walk with the camera up and a trail of glowing orbs is left in
+    mid-air every ~40 cm, coloured by the connected Wi-Fi's signal at that spot.
+    A HUD shows the live signal, quality, bars and the colour legend; Clear resets.
+  - **Saved map overlay:** pick a floor, stand at its start point facing the same
+    way, and its saved measurements appear as orbs where they were taken, along
+    with detected walls and their dB-loss labels.
+  - Optional dBm labels on nearby orbs; orbs scale with distance.
+- `ArProjector`: projects world points to the screen with ARCore's view/projection
+  matrices (drawn as a 2D overlay on the camera feed). Unit-tested.
+
+### Notes
+- No occlusion: orbs show through walls. Saved-map alignment depends on matching
+  the floor's start point and facing direction (expect ~0.5–1 m).
+
 ## [0.8.0] - 2026-11-25
 ### Added
 - **Bluetooth devices on the 3D map.** Mapping can also record nearby Bluetooth LE
@@ -178,7 +195,8 @@ All notable changes to WiFi Mapper are documented here. The format follows
 - Device tuning notes for the Samsung Galaxy S25 Edge (ARCore + Depth, barometer,
   Wi-Fi 7 / 6 GHz, One UI 7 dynamic colour).
 
-[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.9.0
 [0.8.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.8.0
 [0.7.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.7.0
 [0.6.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.6.0

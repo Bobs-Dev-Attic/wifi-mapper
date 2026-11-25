@@ -5,7 +5,7 @@ space — including multi-level buildings like a house. Each measurement is plac
 in 3D by **fusing three positioning sources**, then visualised as a rotatable,
 colour-coded point cloud.
 
-> Current version: **0.8.0** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
+> Current version: **0.9.0** (shown in-app; see [CHANGELOG.md](CHANGELOG.md)).
 
 ## Download & install
 
@@ -89,6 +89,18 @@ network, or one Bluetooth device (if you mapped with "Also record Bluetooth devi
 on). For a specific network or device, a ◇ marks its **estimated location**: one per
 access point for mesh networks. It's a power-weighted average of where the signal
 was strongest, so it can only place a source inside or near the area you walked.
+
+## AR signal view
+
+Tap the AR icon (home screen, or in a map's 3D view):
+
+- **Live paint:** walk with the camera up; glowing orbs are left in the air every
+  ~40 cm, coloured by the signal there, so you can look back and *see* coverage.
+- **Saved map:** choose a floor, stand at its start point facing the same direction,
+  and the saved readings and walls (with dB loss) appear where they were measured.
+
+Orbs show through walls (no occlusion), and saved-map alignment is only as good as
+your starting spot (~0.5–1 m).
 
 ## Radar styles
 
