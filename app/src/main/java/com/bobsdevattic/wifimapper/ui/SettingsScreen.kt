@@ -41,6 +41,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenPermissions: () -> Unit) {
     val spacing by settings.floorSpacingM.collectAsStateWithLifecycle()
     val radarStyle by settings.radarStyle.collectAsStateWithLifecycle()
     val pingSound by settings.pingSound.collectAsStateWithLifecycle()
+    val pingVibrate by settings.pingVibrate.collectAsStateWithLifecycle()
     val units by settings.distanceUnit.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -133,6 +134,14 @@ fun SettingsScreen(onBack: () -> Unit, onOpenPermissions: () -> Unit) {
                         style = MaterialTheme.typography.bodySmall)
                 }
                 Switch(checked = pingSound, onCheckedChange = settings::setPingSound)
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Tracker vibration")
+                    Text("Buzz when the ping reaches the blip (firmer = closer)",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = pingVibrate, onCheckedChange = settings::setPingVibrate)
             }
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp))

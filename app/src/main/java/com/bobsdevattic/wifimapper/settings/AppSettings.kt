@@ -52,6 +52,10 @@ class AppSettings(context: Context) {
     private val _pingSound = MutableStateFlow(prefs.getBoolean(KEY_PING, true))
     val pingSound: StateFlow<Boolean> = _pingSound
 
+    private val _pingVibrate = MutableStateFlow(prefs.getBoolean(KEY_VIBRATE, true))
+    /** Tracker: vibrate when the ping wave reaches the blip. */
+    val pingVibrate: StateFlow<Boolean> = _pingVibrate
+
     private val _distanceUnit = MutableStateFlow(
         DistanceUnit.entries.firstOrNull { it.name == prefs.getString(KEY_UNITS, null) } ?: DistanceUnit.default()
     )
@@ -61,6 +65,7 @@ class AppSettings(context: Context) {
 
     fun setRadarStyle(s: RadarStyle) { prefs.edit().putString(KEY_RADAR, s.name).apply(); _radarStyle.value = s }
     fun setPingSound(on: Boolean) { prefs.edit().putBoolean(KEY_PING, on).apply(); _pingSound.value = on }
+    fun setPingVibrate(on: Boolean) { prefs.edit().putBoolean(KEY_VIBRATE, on).apply(); _pingVibrate.value = on }
 
     fun setPalette(p: SignalPalette) { prefs.edit().putString(KEY_PALETTE, p.name).apply(); _palette.value = p }
     fun setThemeMode(m: ThemeMode) { prefs.edit().putString(KEY_THEME, m.name).apply(); _themeMode.value = m }
@@ -77,6 +82,7 @@ class AppSettings(context: Context) {
         private const val KEY_SPACING = "floor_spacing_m"
         private const val KEY_RADAR = "radar_style"
         private const val KEY_PING = "radar_ping_sound"
+        private const val KEY_VIBRATE = "radar_ping_vibrate"
         private const val KEY_UNITS = "distance_unit"
         const val DEFAULT_SPACING_M = 3.0f
         const val MIN_SPACING_M = 2.0f
