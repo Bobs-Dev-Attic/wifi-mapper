@@ -72,6 +72,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/** The finder for [t], focused on the radar sweep: Back leaves the radar for the finder. */
+private fun radarFocused(t: RadarTarget.Ble, list: Screen): Screen =
+    Screen.Radar(t, parent = Screen.Finder(t, parent = list))
+
 @Composable
 private fun AppRoot() {
     var screen by remember { mutableStateOf<Screen>(Screen.Sessions) }
@@ -110,6 +114,8 @@ private fun AppRoot() {
             onLocate = { t ->
                 screen = if (t is RadarTarget.Ble) Screen.Finder(t, parent = Screen.Networks) else Screen.Radar(t)
             },
+            // Radar icon: Find my device, opened straight onto its radar sweep (Back → finder).
+            onRadar = { t -> screen = radarFocused(t, Screen.Networks) },
         )
         is Screen.Radar -> RadarScreen(
             target = s.target,
@@ -127,6 +133,7 @@ private fun AppRoot() {
         Screen.FindDevice -> FindDeviceScreen(
             onBack = { screen = Screen.Sessions },
             onFind = { screen = Screen.Finder(it) },
+            onRadar = { screen = radarFocused(it, Screen.FindDevice) },
         )
         is Screen.Finder -> FinderScreen(
             target = s.target,

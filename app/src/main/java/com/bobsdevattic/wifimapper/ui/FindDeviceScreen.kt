@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -57,6 +58,8 @@ fun findHeard(paired: PairedDevice, nearby: List<BleDeviceInfo>): BleDeviceInfo?
 fun FindDeviceScreen(
     onBack: () -> Unit,
     onFind: (RadarTarget.Ble) -> Unit,
+    /** Open the finder focused on the radar sweep. */
+    onRadar: (RadarTarget.Ble) -> Unit,
     vm: FindDeviceViewModel = viewModel(),
 ) {
     val perms = rememberMultiplePermissionsState(
@@ -92,14 +95,14 @@ fun FindDeviceScreen(
                     Button(onClick = { perms.launchMultiplePermissionRequest() }) { Text("Grant permission") }
                 }
             } else {
-                DeviceLists(vm, onFind)
+                DeviceLists(vm, onFind, onRadar)
             }
         }
     }
 }
 
 @Composable
-private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Unit) {
+private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Unit, onRadar: (RadarTarget.Ble) -> Unit) {
     LaunchedEffect(Unit) { vm.refreshPaired() }
     val paired by vm.paired.collectAsStateWithLifecycle()
     val nearby by vm.nearby.collectAsStateWithLifecycle()
@@ -120,7 +123,9 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
             p.isEmpty() -> item { Hint("No paired devices.") }
             else -> items(p, key = { "p-" + it.address }) { d ->
                 val heard = findHeard(d, nearby)
+                val target = RadarTarget.Ble(heard?.address ?: d.address, d.name, heard?.txPower)
                 ListItem(
+                    trailingContent = { RadarButton { onRadar(target) } },
                     leadingContent = { if (heard != null) SignalBars(heard.rssi) else Spacer(Modifier.size(28.dp, 22.dp)) },
                     headlineContent = { Text(d.name) },
                     supportingContent = {
@@ -132,9 +137,7 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
                             }
                         )
                     },
-                    modifier = Modifier.clickable {
-                        onFind(RadarTarget.Ble(heard?.address ?: d.address, d.name, heard?.txPower))
-                    },
+                    modifier = Modifier.clickable { onFind(target) },
                 )
                 HorizontalDivider()
             }
@@ -144,25 +147,32 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
         val others = nearby.sortedWith(compareBy<BleDeviceInfo> { it.name == null }.thenByDescending { it.rssi }).take(40)
         if (others.isEmpty()) item { Hint("Listening for Bluetooth devices…") }
         items(others, key = { "n-" + it.address }) { d ->
+            val target = RadarTarget.Ble(d.address, d.displayName, d.txPower)
             ListItem(
+                trailingContent = { RadarButton { onRadar(target) } },
                 leadingContent = { SignalBars(d.rssi) },
                 headlineContent = { Text(d.displayName) },
                 supportingContent = {
                     Text(listOfNotNull("${d.rssi} dBm", SignalDetails.qualityLabel(d.rssi), "~${formatDistance(d.approxDistanceM, LocalDistanceUnit.current)}")
                         .joinToString(" · "))
                 },
-                modifier = Modifier.clickable { onFind(RadarTarget.Ble(d.address, d.displayName, d.txPower)) },
+                modifier = Modifier.clickable { onFind(target) },
             )
             HorizontalDivider()
         }
         item {
             Hint(
-                "Tap a device to start the hot/cold finder. Lost earbuds usually need to be out " +
+                "Tap a device to start the hot/cold finder, or its radar icon to sweep for its " +
+                    "direction. Lost earbuds usually need to be out " +
                     "of their case to be heard.",
             )
         }
     }
 }
+
+@Composable
+private fun RadarButton(onClick: () -> Unit) =
+    IconButton(onClick = onClick) { Icon(Icons.Default.Radar, "Find with radar") }
 
 @Composable
 private fun SectionHeader(text: String) = Text(
