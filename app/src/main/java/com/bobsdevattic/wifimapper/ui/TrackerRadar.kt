@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bobsdevattic.wifimapper.model.CompassMath
 import com.bobsdevattic.wifimapper.model.RadarAccumulator
+import com.bobsdevattic.wifimapper.model.SectorShading
 import com.bobsdevattic.wifimapper.model.SignalDetails
 import com.bobsdevattic.wifimapper.model.TrackerMath
 import com.bobsdevattic.wifimapper.model.UnitFormat
@@ -151,27 +152,42 @@ fun TrackerRadar(
                 cy - r * cos(Math.toRadians(relDeg.toDouble())).toFloat(),
             )
 
-            // Faint "returns" from the sweep within the forward fan.
+            // Sweep "returns": the strongest direction is highlighted; the other
+            // directions are graded relative to the runner-up (see SectorShading).
             val means = ui.sectorMeans
-            val filled = means.filterNotNull()
-            if (filled.size >= 2) {
-                val lo = filled.min(); val span = (filled.max() - lo).coerceAtLeast(1f)
+            if (means.count { it != null } >= 2) {
                 val w = 360f / means.size
-                means.forEachIndexed { i, m ->
-                    if (m == null) return@forEachIndexed
-                    val centre = (i + 0.5f) * w
-                    val rel = (((centre - ui.headingDeg) % 360f) + 540f) % 360f - 180f
+                val peakIdx = ui.bearingDeg?.takeIf { ui.contrastDb >= 3f }
+                    ?.let { SectorShading.sectorOf(it, means.size) }
+                val shades = SectorShading.shade(means, peakIdx)
+                val r0 = maxR * 0.14f
+                val outer = maxR * 0.93f                            // stop inside the compass labels
+                fun wedge(rel: Float) = Path().apply {
+                    val s0 = at(rel - w / 2, r0); moveTo(s0.x, s0.y)
+                    for (k in 0..4) { val p = at(rel - w / 2 + w * k / 4, outer); lineTo(p.x, p.y) }
+                    val e = at(rel + w / 2, r0); lineTo(e.x, e.y); close()
+                }
+                var peakPath: Path? = null
+                shades.forEachIndexed { i, sh ->
+                    if (sh == null) return@forEachIndexed
+                    val rel = CompassMath.relative((i + 0.5f) * w, ui.headingDeg)
                     if (abs(rel) > 90f - w / 2) return@forEachIndexed     // keep above the baseline
-                    val t = (m - lo) / span
-                    val a = t * t * 0.16f                                   // subtle: the field stays dark
-                    val path = Path().apply {
-                        val r0 = maxR * 0.14f
-                        moveTo(at(rel - w / 2, r0).x, at(rel - w / 2, r0).y)
-                        val outer = maxR * 0.93f                            // stop inside the compass labels
-                        for (k in 0..4) { val p = at(rel - w / 2 + w * k / 4, outer); lineTo(p.x, p.y) }
-                        val e = at(rel + w / 2, r0); lineTo(e.x, e.y); close()
-                    }
-                    drawPath(path, Cyan.copy(alpha = a))
+                    val path = wedge(rel)
+                    if (sh.peak) { peakPath = path; return@forEachIndexed }
+                    // Radial gradient: faint near the emitter, strongest at the rim.
+                    val a = 0.03f + 0.24f * sh.level * sh.level
+                    drawPath(path, Brush.radialGradient(
+                        0f to Cyan.copy(alpha = a * 0.2f), 1f to Cyan.copy(alpha = a),
+                        center = Offset(cx, cy), radius = outer,
+                    ))
+                }
+                peakPath?.let { path ->
+                    drawPath(path, Brush.radialGradient(
+                        0f to Color.White.copy(alpha = 0.10f), 0.6f to Cyan.copy(alpha = 0.35f), 1f to Cyan.copy(alpha = 0.6f),
+                        center = Offset(cx, cy), radius = outer,
+                    ))
+                    drawPath(path, Cyan.copy(alpha = 0.25f), style = Stroke(10f))     // glow
+                    drawPath(path, Color.White.copy(alpha = 0.9f), style = Stroke(2.5f))
                 }
             }
 

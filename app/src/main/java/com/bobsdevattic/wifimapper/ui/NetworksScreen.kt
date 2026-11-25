@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Application
 import android.os.Build
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -66,6 +68,8 @@ class NetworksViewModel(app: Application) : AndroidViewModel(app) {
 fun NetworksScreen(
     onBack: () -> Unit,
     onLocate: (RadarTarget) -> Unit,
+    /** Bluetooth device: open Find my device straight into the radar sweep. */
+    onRadar: (RadarTarget.Ble) -> Unit,
     vm: NetworksViewModel = viewModel(),
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -110,7 +114,7 @@ fun NetworksScreen(
                     if (!perms.allPermissionsGranted) PermissionNeeded(
                         "Bluetooth scan permission is needed to list nearby Bluetooth LE devices.",
                     ) { perms.launchMultiplePermissionRequest() }
-                    else BleTab(vm, onLocate)
+                    else BleTab(vm, onLocate, onRadar)
                 }
             }
         }
@@ -186,7 +190,7 @@ private fun WifiTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit) {
 }
 
 @Composable
-private fun BleTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit) {
+private fun BleTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit, onRadar: (RadarTarget.Ble) -> Unit) {
     val devices by vm.bleDevices.collectAsStateWithLifecycle()
     val status by vm.bleStatus.collectAsStateWithLifecycle()
     var namedOnly by rememberSaveable { mutableStateOf(false) }
@@ -214,7 +218,9 @@ private fun BleTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit) {
     )
     LazyColumn(Modifier.fillMaxSize()) {
         items(shown, key = { it.address }) { d ->
+            val target = RadarTarget.Ble(d.address, d.displayName, d.txPower)
             ListItem(
+                modifier = Modifier.clickable { onLocate(target) },   // hot/cold finder
                 leadingContent = { SignalBars(d.rssi) },
                 headlineContent = { Text(d.displayName) },
                 supportingContent = {
@@ -229,8 +235,8 @@ private fun BleTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit) {
                     }
                 },
                 trailingContent = {
-                    IconButton(onClick = { onLocate(RadarTarget.Ble(d.address, d.displayName, d.txPower)) }) {
-                        Icon(Icons.Default.MyLocation, "Locate with radar")
+                    IconButton(onClick = { onRadar(target) }) {
+                        Icon(Icons.Default.Radar, "Find with radar")
                     }
                 },
             )

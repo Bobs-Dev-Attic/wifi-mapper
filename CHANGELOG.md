@@ -7,6 +7,19 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-25
+### Added
+- **Tracker radar: strongest direction highlighted.** The sweep returns now show
+  the peak direction as a bright, outlined wedge (the sector holding the
+  estimated bearing, or the strongest sector before a bearing is known). Every
+  other direction is shaded as a gradient **relative to the next-strongest**
+  direction, so one dominant peak no longer flattens the rest into darkness.
+- **Radar icon on Bluetooth lists** (Nearby signals → Bluetooth, and both lists in
+  Find my device). It opens Find my device for that device straight onto its
+  radar sweep; Back returns to the hot/cold finder. Tapping the row still opens
+  the finder.
+- `SectorShading` helper with unit tests.
+
 ## [0.12.0] - 2026-11-25
 ### Added
 - **Pinch to zoom the tracker radar.** Spread two fingers to zoom in to a 3 ft
