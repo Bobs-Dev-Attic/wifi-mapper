@@ -111,6 +111,7 @@ fun CaptureScreen(
     }
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 private fun SetupStep(
     ui: CaptureViewModel.UiState,
