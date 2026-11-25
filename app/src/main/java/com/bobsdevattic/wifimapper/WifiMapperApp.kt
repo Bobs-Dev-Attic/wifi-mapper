@@ -4,6 +4,7 @@ import android.app.Application
 import com.bobsdevattic.wifimapper.capture.PoseSource
 import com.bobsdevattic.wifimapper.capture.WallSource
 import com.bobsdevattic.wifimapper.data.MeasurementRepository
+import com.bobsdevattic.wifimapper.settings.AppSettings
 
 /**
  * Process-wide singletons. Kept deliberately small — a DI framework (Hilt) can
@@ -15,4 +16,5 @@ class WifiMapperApp : Application() {
     val poseSource: PoseSource by lazy { PoseSource() }
     /** Shared so the AR screen can push detected walls to the capture VM. */
     val wallSource: WallSource by lazy { WallSource() }
+    val settings: AppSettings by lazy { AppSettings(this) }
 }

@@ -20,6 +20,14 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Bluetooth LE scanning for the networks list and radar. Android 12+ uses
+         BLUETOOTH_SCAN (runtime); older versions use the legacy permissions plus
+         location. We don't claim neverForLocation: RSSI is used to locate devices. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
     <!-- Barometer. Not all devices have one; we handle absence at runtime. -->
     <uses-feature android:name="android.hardware.sensor.barometer"
         android:required="false" />

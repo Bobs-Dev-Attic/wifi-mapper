@@ -1,29 +1,37 @@
 package com.bobsdevattic.wifimapper.viz
 
 import android.app.Application
-import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.bobsdevattic.wifimapper.WifiMapperApp
+import com.bobsdevattic.wifimapper.data.SamplePointWithReadings
+import com.bobsdevattic.wifimapper.model.FloorInfo
+import com.bobsdevattic.wifimapper.model.FloorLayout
 import com.bobsdevattic.wifimapper.model.MeasuredPoint
 import com.bobsdevattic.wifimapper.model.Vector3
 import com.bobsdevattic.wifimapper.model.WallLossAnalyzer
+import com.bobsdevattic.wifimapper.model.WallObservation
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/** A floor-filter chip: [key] is the floor's rank (0 = lowest). */
+data class FloorChip(val key: Int, val label: String)
 
 class ViewerViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val repo = (app as WifiMapperApp).repository
-    private val prefs = app.getSharedPreferences("viewer_settings", Context.MODE_PRIVATE)
+    private val appRef = app as WifiMapperApp
+    private val repo = appRef.repository
+    private val settings = appRef.settings
 
     data class UiState(
         val sessionName: String = "",
         val points: List<CloudPoint> = emptyList(),
-        val floorFilter: Int? = null,     // null = all floors
-        val availableFloors: List<Int> = emptyList(),
+        val floorFilter: Int? = null,     // null = all floors; else floor rank
+        val availableFloors: List<FloorChip> = emptyList(),
         val stats: CoverageStats = CoverageStats.from(emptyList()),
         val palette: SignalPalette = SignalPalette.DEFAULT,
         val walls: List<WallRender> = emptyList(),
@@ -32,59 +40,92 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
         val loading: Boolean = true,
     )
 
-    private val _ui = MutableStateFlow(
-        UiState(palette = SignalPalette.fromName(prefs.getString(KEY_PALETTE, null)))
-    )
+    private val _ui = MutableStateFlow(UiState(palette = settings.palette.value))
     val ui: StateFlow<UiState> = _ui
+
+    // Raw data for the loaded map; rebuilt into render lists when settings change.
+    private var floors: List<FloorInfo> = emptyList()
+    private var raw: List<SamplePointWithReadings> = emptyList()
+    private var rawWalls: List<Pair<WallObservation, Long?>> = emptyList()
+    private var wallLosses: Map<WallObservation, com.bobsdevattic.wifimapper.model.WallLoss> = emptyMap()
 
     private var allPoints: List<CloudPoint> = emptyList()
     private var allWalls: List<WallRender> = emptyList()
+    private var loadedSessionId: Long? = null
+
+    init {
+        // Palette and floor spacing come from Settings and apply live.
+        viewModelScope.launch {
+            combine(settings.palette, settings.floorSpacingM) { p, s -> p to s }.collect { (p, s) ->
+                _ui.value = _ui.value.copy(palette = p)
+                rebuild(p, s)
+            }
+        }
+    }
 
     fun load(sessionId: Long) {
+        loadedSessionId = sessionId
         viewModelScope.launch {
+            _ui.value = _ui.value.copy(loading = true, floorFilter = null)
             val session = repo.getSession(sessionId)
-            val palette = _ui.value.palette
-            val raw = repo.getPoints(sessionId)
-            allPoints = raw.map { pwr ->
-                CloudPoint(
-                    position = Vector3(pwr.point.x, pwr.point.y, pwr.point.z),
-                    color = SignalColor.forRssi(pwr.point.bestRssi, palette),
-                    floor = pwr.point.floorIndex,
-                    rssi = pwr.point.bestRssi,
-                )
+            floors = repo.getFloors(sessionId)
+            raw = repo.getPoints(sessionId)
+            rawWalls = repo.getWalls(sessionId)
+
+            // Wall loss per floor, in each floor's own (local) frame, so points on
+            // different floors are never paired across a ceiling.
+            wallLosses = withContext(Dispatchers.Default) {
+                val byFloor = raw.groupBy { it.point.floorId }
+                rawWalls.groupBy { it.second }.flatMap { (floorId, ws) ->
+                    val measured = byFloor[floorId].orEmpty().map { pwr ->
+                        MeasuredPoint(
+                            Vector3(pwr.point.x, pwr.point.y, pwr.point.z),
+                            pwr.readings.associate { it.bssid to it.rssi },
+                        )
+                    }
+                    WallLossAnalyzer().analyze(ws.map { it.first }, measured).map { it.wall to it }
+                }.toMap()
             }
-            // Wall signal loss: pairwise analysis, so keep it off the main thread.
-            val walls = repo.getWalls(sessionId)
-            allWalls = withContext(Dispatchers.Default) {
-                val measured = raw.map { pwr ->
-                    MeasuredPoint(
-                        Vector3(pwr.point.x, pwr.point.y, pwr.point.z),
-                        pwr.readings.associate { it.bssid to it.rssi },
-                    )
-                }
-                val losses = WallLossAnalyzer().analyze(walls.map { it.first }, measured)
-                losses.zip(walls) { loss, (_, floor) -> WallRender(loss, floor) }
-            }
-            _ui.value = _ui.value.copy(
-                sessionName = session?.name ?: "Session $sessionId",
-                availableFloors = allPoints.map { it.floor }.distinct().sorted(),
-                loading = false,
-            )
-            applyFilter(_ui.value.floorFilter)
+
+            _ui.value = _ui.value.copy(sessionName = session?.name ?: "Map $sessionId", loading = false)
+            rebuild(settings.palette.value, settings.floorSpacingM.value)
         }
+    }
+
+    /** Reload after floors were edited elsewhere (labels / order). */
+    fun reload() { loadedSessionId?.let(::load) }
+
+    private fun rebuild(palette: SignalPalette, spacingM: Float) {
+        val ranks = FloorLayout.ranks(floors)
+        fun rankOf(floorId: Long?) = floorId?.let { ranks[it] } ?: 0
+        fun lift(v: Vector3, rank: Int) = v.copy(y = v.y + FloorLayout.yOffset(rank, spacingM))
+
+        allPoints = raw.map { pwr ->
+            val rank = rankOf(pwr.point.floorId)
+            CloudPoint(
+                position = lift(Vector3(pwr.point.x, pwr.point.y, pwr.point.z), rank),
+                color = SignalColor.forRssi(pwr.point.bestRssi, palette),
+                floor = rank,
+                rssi = pwr.point.bestRssi,
+            )
+        }
+        allWalls = rawWalls.mapNotNull { (wall, floorId) ->
+            val loss = wallLosses[wall] ?: return@mapNotNull null
+            val rank = rankOf(floorId)
+            // Render the wall lifted to its floor; keep the loss estimate.
+            WallRender(loss.copy(wall = wall.copy(center = lift(wall.center, rank))), rank)
+        }
+        val chips = floors.map { f -> FloorChip(ranks.getValue(f.id), f.label) }.sortedBy { it.key }
+        _ui.value = _ui.value.copy(availableFloors = chips)
+        applyFilter(_ui.value.floorFilter)
     }
 
     fun setFloorFilter(floor: Int?) = applyFilter(floor)
 
     fun toggleWalls() { _ui.value = _ui.value.copy(showWalls = !_ui.value.showWalls) }
 
-    /** Switch colour scale, remember it, and recolour every point. */
-    fun setPalette(palette: SignalPalette) {
-        prefs.edit().putString(KEY_PALETTE, palette.name).apply()
-        allPoints = allPoints.map { it.copy(color = SignalColor.forRssi(it.rssi, palette)) }
-        _ui.value = _ui.value.copy(palette = palette)
-        applyFilter(_ui.value.floorFilter)
-    }
+    /** Quick palette switch from the viewer; persisted via Settings. */
+    fun setPalette(palette: SignalPalette) = settings.setPalette(palette)
 
     // Stats are computed from the exact list instances shown, so the MAX/MIN
     // markers (matched by reference in PointCloud3DView) stay in sync.
@@ -98,9 +139,5 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
             walls = shownWalls,
             wallSummary = WallSummary.of(shownWalls),
         )
-    }
-
-    private companion object {
-        const val KEY_PALETTE = "signal_palette"
     }
 }

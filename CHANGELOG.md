@@ -7,6 +7,41 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-25
+### Added
+- **Multi-floor maps.** A map now holds floors, each captured in its own pass that
+  starts at a marked reference point (the same spot, stacked vertically, facing
+  the same direction), which lines the floors up. "Add floor" places it above or
+  below the existing ones.
+- **Floors page:** rename floors, reorder them (▲/▼), see point counts, delete a
+  floor (with its points and walls). The 3D view stacks floors in that order, and
+  the floor filter chips use your labels.
+- **Settings page:** app theme (system/light/dark), Material You colours, signal
+  palette with previews, floor spacing for the 3D view, and version info.
+- **Nearby signals page** with Wi-Fi and Bluetooth tabs:
+  - Wi-Fi: name, BSSID, RSSI + bars + quality, band, channel, channel width,
+    Wi-Fi standard (4/5/6/6E/7), security (WPA2/WPA3/Open…), rough distance,
+    connected marker, band filter, and a note on Android's scan throttling.
+  - Bluetooth LE: live list with name, manufacturer, RSSI + bars, advertised TX
+    power, rough distance, connectable vs beacon.
+- **Signal radar** to find a router, hotspot or Bluetooth device: a compass-
+  oriented polar plot built from a body-shadow sweep (turn slowly on the spot),
+  an arrow toward the strongest direction with "turn N° left/right" guidance,
+  a contrast check that says when there's no clear direction, a warmer/colder
+  trend for walking toward the source, and a rough distance. Live for the
+  connected Wi-Fi and for Bluetooth devices; other Wi-Fi networks are limited by
+  Android's scan throttling (the screen explains how to lift it).
+- Unit tests: radar direction finding (50 randomised noisy sweeps), warmer/colder
+  trend, Wi-Fi channel/security/standard parsing, floor ordering, and the v3
+  migration schema.
+
+### Changed
+- System Back now returns to the previous screen instead of closing the app.
+- Database schema v3: `floors` table and `floorId` on points and walls. Existing
+  maps are migrated to a single "Floor 1".
+- Wall loss is analysed per floor (points on different floors are never paired).
+- CI prints Room's exported schema so it can be committed for future migrations.
+
 ## [0.5.0] - 2026-11-25
 ### Added
 - **Wall detection.** ARCore vertical-plane finding is enabled during capture (with
@@ -94,7 +129,8 @@ All notable changes to WiFi Mapper are documented here. The format follows
 - Device tuning notes for the Samsung Galaxy S25 Edge (ARCore + Depth, barometer,
   Wi-Fi 7 / 6 GHz, One UI 7 dynamic colour).
 
-[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/bobs-dev-attic/wifi-mapper/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.6.0
 [0.5.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.5.0
 [0.4.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.4.0
 [0.3.0]: https://github.com/bobs-dev-attic/wifi-mapper/releases/tag/v0.3.0

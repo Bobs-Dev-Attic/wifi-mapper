@@ -21,6 +21,7 @@ import com.bobsdevattic.wifimapper.viz.PointCloud3DView
 import com.bobsdevattic.wifimapper.viz.SignalColor
 import com.bobsdevattic.wifimapper.viz.SignalPalette
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Palette
 import com.bobsdevattic.wifimapper.viz.ViewerViewModel
 import com.bobsdevattic.wifimapper.viz.WallSummary
@@ -30,6 +31,7 @@ import com.bobsdevattic.wifimapper.viz.WallSummary
 fun ViewerScreen(
     sessionId: Long,
     onBack: () -> Unit,
+    onManageFloors: () -> Unit,
     vm: ViewerViewModel = viewModel(),
 ) {
     LaunchedEffect(sessionId) { vm.load(sessionId) }
@@ -45,6 +47,9 @@ fun ViewerScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onManageFloors) {
+                        Icon(Icons.Default.Layers, contentDescription = "Floors")
+                    }
                     PalettePicker(current = ui.palette, onSelect = vm::setPalette)
                     VersionBadge()
                 },
@@ -72,9 +77,9 @@ fun ViewerScreen(
                     )
                     ui.availableFloors.forEach { f ->
                         FilterChip(
-                            selected = ui.floorFilter == f,
-                            onClick = { vm.setFloorFilter(f) },
-                            label = { Text("Floor $f") },
+                            selected = ui.floorFilter == f.key,
+                            onClick = { vm.setFloorFilter(f.key) },
+                            label = { Text(f.label) },
                         )
                     }
                 }

@@ -60,6 +60,9 @@ data class SamplePointEntity(
     // RSSI (dBm) of the strongest AP seen here, and how many APs were visible.
     val bestRssi: Int,
     val apCount: Int,
+    // Floor this point was captured on (v3+). Nullable only because SQLite can't
+    // add a NOT NULL column without a default; every row has one after migration.
+    val floorId: Long? = null,
 )
 
 /**
@@ -117,4 +120,29 @@ data class WallEntity(
     val width: Float,
     val height: Float,
     val floorIndex: Int,
+    val floorId: Long? = null,
+)
+
+/**
+ * One floor of a map. Each floor is captured in its own AR run that starts at a
+ * user-marked reference spot (the same spot, vertically, on every floor), so
+ * floors line up horizontally. [orderIndex] sets vertical order (lower = lower);
+ * users can relabel and reorder floors.
+ */
+@Entity(
+    tableName = "floors",
+    foreignKeys = [ForeignKey(
+        entity = SessionEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["sessionId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+    indices = [Index("sessionId")],
+)
+data class FloorEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val sessionId: Long,
+    val label: String,
+    val orderIndex: Int,
+    val createdAt: Long,
 )
