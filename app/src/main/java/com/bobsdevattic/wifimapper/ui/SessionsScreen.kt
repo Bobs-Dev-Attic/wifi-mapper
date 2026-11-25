@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -34,6 +35,7 @@ fun SessionsScreen(
     onOpenNetworks: () -> Unit,
     onOpenSettings: () -> Unit,
     onFindDevice: () -> Unit,
+    onOpenAr: () -> Unit,
     vm: SessionsViewModel = viewModel(),
 ) {
     val sessions by vm.sessions.collectAsStateWithLifecycle()
@@ -44,6 +46,9 @@ fun SessionsScreen(
             TopAppBar(
                 title = { Text("WiFi Mapper") },
                 actions = {
+                    IconButton(onClick = onOpenAr) {
+                        Icon(Icons.Default.ViewInAr, contentDescription = "AR signal view")
+                    }
                     IconButton(onClick = onFindDevice) {
                         Icon(Icons.Default.BluetoothSearching, contentDescription = "Find my Bluetooth device")
                     }

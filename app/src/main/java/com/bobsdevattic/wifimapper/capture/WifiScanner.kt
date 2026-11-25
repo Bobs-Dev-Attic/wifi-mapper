@@ -84,6 +84,15 @@ class WifiScanner(context: Context) {
 
     val isWifiEnabled: Boolean get() = wifiManager.isWifiEnabled
 
+    /** SSID of the currently-connected network (without quotes), or null. */
+    @SuppressLint("MissingPermission")
+    fun connectedSsid(): String? = try {
+        @Suppress("DEPRECATION")
+        wifiManager.connectionInfo?.ssid?.removeSurrounding("\"")?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
+    } catch (e: SecurityException) {
+        null
+    }
+
     /** BSSID of the currently-connected network, or null. */
     @SuppressLint("MissingPermission")
     fun connectedBssid(): String? = try {

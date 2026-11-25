@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bobsdevattic.wifimapper.radar.RadarTarget
 import com.bobsdevattic.wifimapper.settings.ThemeMode
+import com.bobsdevattic.wifimapper.ui.ArOverlayScreen
 import com.bobsdevattic.wifimapper.ui.CaptureScreen
 import com.bobsdevattic.wifimapper.ui.FindDeviceScreen
 import com.bobsdevattic.wifimapper.ui.FinderScreen
@@ -41,6 +42,8 @@ sealed interface Screen {
     data class Radar(val target: RadarTarget, override val parent: Screen = Networks) : Screen
     data object Settings : Screen { override val parent: Screen = Sessions }
     data object FindDevice : Screen { override val parent: Screen = Sessions }
+    /** [sessionId] null = live paint only; otherwise can overlay that map's floors. */
+    data class ArOverlay(val sessionId: Long?, override val parent: Screen = Sessions) : Screen
     data class Finder(val target: RadarTarget.Ble, override val parent: Screen = FindDevice) : Screen
 }
 
@@ -76,6 +79,7 @@ private fun AppRoot() {
             onOpenNetworks = { screen = Screen.Networks },
             onOpenSettings = { screen = Screen.Settings },
             onFindDevice = { screen = Screen.FindDevice },
+            onOpenAr = { screen = Screen.ArOverlay(sessionId = null) },
         )
         is Screen.Capture -> CaptureScreen(
             sessionId = s.sessionId,
@@ -86,6 +90,7 @@ private fun AppRoot() {
             sessionId = s.sessionId,
             onBack = { screen = Screen.Sessions },
             onManageFloors = { screen = Screen.Floors(s.sessionId) },
+            onOpenAr = { screen = Screen.ArOverlay(s.sessionId, parent = s) },
         )
         is Screen.Floors -> FloorsScreen(
             sessionId = s.sessionId,
@@ -104,6 +109,10 @@ private fun AppRoot() {
             onBack = { screen = s.parent },
         )
         Screen.Settings -> SettingsScreen(onBack = { screen = Screen.Sessions })
+        is Screen.ArOverlay -> ArOverlayScreen(
+            sessionId = s.sessionId,
+            onBack = { screen = s.parent },
+        )
         Screen.FindDevice -> FindDeviceScreen(
             onBack = { screen = Screen.Sessions },
             onFind = { screen = Screen.Finder(it) },
