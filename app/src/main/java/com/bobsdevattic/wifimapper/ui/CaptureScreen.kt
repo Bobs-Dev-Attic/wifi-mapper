@@ -110,7 +110,7 @@ private fun StatusOverlay(
                     )
                 }
                 StatRow("Tracking", if (ui.tracking) "AR locked" else "not tracking",
-                    if (ui.tracking) Color(0xFF2E7D32) else Color(0xFFC62828))
+                    if (ui.tracking) Color(0xFF1565C0) else Color(0xFFE65100))
                 StatRow("Floor", ui.floor.toString(), null)
                 StatRow("Visible APs", ui.visibleAps.toString(), null)
                 StatRow("Best RSSI", ui.bestRssi?.let { "$it dBm" } ?: "—", null)
