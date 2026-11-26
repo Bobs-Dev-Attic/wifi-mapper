@@ -16,6 +16,9 @@ All notable changes to WiFi Mapper are documented here. The format follows
   the order. Hidden networks / unnamed devices / unknown makers stay at the bottom
   when sorting by that field, and ties go to the stronger signal. The choice is
   kept while you switch tabs or rotate.
+- The same **Sort** drop-down on **Find my device**, ordering both "Your paired
+  devices" and "Nearby now". Paired devices sort by their live signal; ones not
+  heard right now stay at the bottom (by name sort, all are ordered A→Z).
 - `ListSort` helper with unit tests.
 
 ## [0.14.0] - 2026-11-25

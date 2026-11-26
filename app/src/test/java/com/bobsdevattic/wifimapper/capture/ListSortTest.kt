@@ -61,4 +61,26 @@ class ListSortTest {
         val d = ListSort.ble(devs, BleSort.DISTANCE).map { it.approxDistanceM }
         assertEquals(d.sorted(), d)
     }
+
+    @Test fun pairedSortsUseLiveSignalWithUnheardLast() {
+        val paired = listOf(
+            PairedDevice("a1", "Zed buds", true),
+            PairedDevice("a2", "car", false),          // classic-only: never heard
+            PairedDevice("a3", "Alpha watch", true),
+            PairedDevice("a4", "Desk", true),          // not heard right now
+        )
+        val heard = mapOf(
+            "a1" to ble("Zed buds", -55, maker = "Samsung", seen = 10),
+            "a3" to ble("Alpha watch", -75, maker = "Google", seen = 20),
+        )
+        val of: (PairedDevice) -> BleDeviceInfo? = { heard[it.address] }
+        fun names(sort: BleSort, rev: Boolean = false) = ListSort.paired(paired, of, sort, rev).map { it.name }
+
+        assertEquals(listOf("Zed buds", "Alpha watch", "car", "Desk"), names(BleSort.SIGNAL))
+        assertEquals(listOf("Alpha watch", "Zed buds", "car", "Desk"), names(BleSort.SIGNAL, rev = true))
+        assertEquals(listOf("Alpha watch", "car", "Desk", "Zed buds"), names(BleSort.NAME))
+        assertEquals(listOf("Zed buds", "Desk", "car", "Alpha watch"), names(BleSort.NAME, rev = true))
+        assertEquals(listOf("Alpha watch", "Zed buds", "car", "Desk"), names(BleSort.MAKER))
+        assertEquals(listOf("Alpha watch", "Zed buds", "car", "Desk"), names(BleSort.RECENT))
+    }
 }

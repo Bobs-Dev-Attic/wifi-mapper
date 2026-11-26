@@ -48,16 +48,42 @@ object ListSort {
             BleSort.MAKER -> { d -> d.manufacturer.isNullOrBlank() }
             else -> { _ -> false }
         }
-        val key: Comparator<BleDeviceInfo> = when (sort) {
-            BleSort.SIGNAL -> compareByDescending { it.rssi }
-            BleSort.NAME -> compareBy { it.name.orEmpty().lowercase() }
-            BleSort.DISTANCE -> compareBy { it.approxDistanceM }
-            BleSort.MAKER -> compareBy<BleDeviceInfo> { it.manufacturer.orEmpty().lowercase() }
-                .thenBy { it.displayName.lowercase() }
-            BleSort.TYPE -> compareByDescending { it.connectable }
-            BleSort.RECENT -> compareByDescending { it.lastSeenMs }
-        }
-        return list.sortedWith(build(missing, key, reversed) { it.rssi })
+        return list.sortedWith(build(missing, bleKey(sort), reversed) { it.rssi })
+    }
+
+    /**
+     * Your paired devices, ordered by [sort]. Name uses the paired name; every
+     * other sort uses the live advertisement from [heardOf], with devices not
+     * heard right now kept at the bottom (alphabetically).
+     */
+    fun paired(
+        list: List<PairedDevice>,
+        heardOf: (PairedDevice) -> BleDeviceInfo?,
+        sort: BleSort,
+        reversed: Boolean = false,
+    ): List<PairedDevice> {
+        val withHeard = list.map { it to heardOf(it) }
+        val missing: (Pair<PairedDevice, BleDeviceInfo?>) -> Boolean = { (_, h) -> sort != BleSort.NAME && h == null }
+        val key: Comparator<Pair<PairedDevice, BleDeviceInfo?>> =
+            if (sort == BleSort.NAME) compareBy { it.first.name.lowercase() }
+            else Comparator { a, b ->
+                val ha = a.second; val hb = b.second
+                if (ha == null || hb == null) 0 else bleKey(sort).compare(ha, hb)
+            }
+        return withHeard
+            .sortedWith(build(missing, key, reversed) { it.second?.rssi ?: Int.MIN_VALUE }
+                .thenBy { it.first.name.lowercase() })
+            .map { it.first }
+    }
+
+    private fun bleKey(sort: BleSort): Comparator<BleDeviceInfo> = when (sort) {
+        BleSort.SIGNAL -> compareByDescending { it.rssi }
+        BleSort.NAME -> compareBy { it.name.orEmpty().lowercase() }
+        BleSort.DISTANCE -> compareBy { it.approxDistanceM }
+        BleSort.MAKER -> compareBy<BleDeviceInfo> { it.manufacturer.orEmpty().lowercase() }
+            .thenBy { it.displayName.lowercase() }
+        BleSort.TYPE -> compareByDescending { it.connectable }
+        BleSort.RECENT -> compareByDescending { it.lastSeenMs }
     }
 
     private fun <T> build(
