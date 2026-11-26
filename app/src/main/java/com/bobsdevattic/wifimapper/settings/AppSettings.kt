@@ -34,7 +34,8 @@ class AppSettings(context: Context) {
     /** Remembered sort orders for the nearby-signal and Find my device lists. */
     val wifiSort = SortPref(prefs, "sort_wifi", WifiSort.SIGNAL, WifiSort.entries)
     val bleSort = SortPref(prefs, "sort_ble", BleSort.SIGNAL, BleSort.entries)
-    val findSort = SortPref(prefs, "sort_find_device", BleSort.SIGNAL, BleSort.entries)
+    val findSort = SortPref(prefs, "sort_find_device", BleSort.SIGNAL, BleSort.entries)   // Find my device → Nearby now
+    val pairedSort = SortPref(prefs, "sort_paired", BleSort.SIGNAL, BleSort.entries)      // Find my device → paired
 
     private val _palette = MutableStateFlow(SignalPalette.fromName(prefs.getString(KEY_PALETTE, null)))
     val palette: StateFlow<SignalPalette> = _palette

@@ -119,7 +119,7 @@ readout) and a **classic** compass style. Switch on the radar screen or in Setti
 ## Find my Bluetooth device
 
 **Find my device** (Bluetooth icon on the home screen) lists your paired devices and
-everything advertising nearby (both lists can be ordered with the **Sort** drop-down). Tap a device's **radar icon** to jump straight to a radar
+everything advertising nearby (each list has its own **Sort** drop-down). Tap a device's **radar icon** to jump straight to a radar
 sweep for its direction, or pick the row for a **hot/cold finder**: beeps and
 vibration speed up as you get closer, and a "strongest so far" marker warns if you
 walk past it. **Find direction** opens the radar sweep.

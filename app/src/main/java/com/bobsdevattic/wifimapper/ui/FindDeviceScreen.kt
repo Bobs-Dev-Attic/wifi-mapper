@@ -110,10 +110,13 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
     val paired by vm.paired.collectAsStateWithLifecycle()
     val nearby by vm.nearby.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
-    // One sort for both lists; paired devices not heard right now stay at the bottom.
-    val sortPref = vm.settings.findSort
-    val sort by sortPref.sort.collectAsStateWithLifecycle()
-    val reversed by sortPref.reversed.collectAsStateWithLifecycle()
+    // Each list has its own remembered sort. Paired devices not heard right now stay at the bottom.
+    val pairedPref = vm.settings.pairedSort
+    val pairedSort by pairedPref.sort.collectAsStateWithLifecycle()
+    val pairedReversed by pairedPref.reversed.collectAsStateWithLifecycle()
+    val nearbyPref = vm.settings.findSort
+    val nearbySort by nearbyPref.sort.collectAsStateWithLifecycle()
+    val nearbyReversed by nearbyPref.reversed.collectAsStateWithLifecycle()
 
     LazyColumn(Modifier.fillMaxSize()) {
         when (status) {
@@ -124,15 +127,14 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
         }
 
         item {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.End) {
+            SectionHeader("Your paired devices") {
                 SortMenu(
-                    options = BleSort.entries, selected = sort, label = { it.label }, reversed = reversed,
-                    onSelect = sortPref::select, onToggleReverse = sortPref::toggleReversed,
+                    options = BleSort.entries, selected = pairedSort, label = { it.label }, reversed = pairedReversed,
+                    onSelect = pairedPref::select, onToggleReverse = pairedPref::toggleReversed,
                 )
             }
         }
-        item { SectionHeader("Your paired devices") }
-        val p = paired?.let { list -> ListSort.paired(list, { findHeard(it, nearby) }, sort, reversed) }
+        val p = paired?.let { list -> ListSort.paired(list, { findHeard(it, nearby) }, pairedSort, pairedReversed) }
         when {
             p == null -> item { Hint("Grant the Bluetooth permission to see paired devices.") }
             p.isEmpty() -> item { Hint("No paired devices.") }
@@ -158,8 +160,15 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
             }
         }
 
-        item { SectionHeader("Nearby now") }
-        val others = ListSort.ble(nearby, sort, reversed).take(40)
+        item {
+            SectionHeader("Nearby now") {
+                SortMenu(
+                    options = BleSort.entries, selected = nearbySort, label = { it.label }, reversed = nearbyReversed,
+                    onSelect = nearbyPref::select, onToggleReverse = nearbyPref::toggleReversed,
+                )
+            }
+        }
+        val others = ListSort.ble(nearby, nearbySort, nearbyReversed).take(40)
         if (others.isEmpty()) item { Hint("Listening for Bluetooth devices…") }
         items(others, key = { "n-" + it.address }) { d ->
             val target = RadarTarget.Ble(d.address, d.displayName, d.txPower)
@@ -190,10 +199,16 @@ private fun RadarButton(onClick: () -> Unit) =
     IconButton(onClick = onClick) { Icon(Icons.Default.Radar, "Find with radar") }
 
 @Composable
-private fun SectionHeader(text: String) = Text(
-    text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
-    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
-)
+private fun SectionHeader(text: String, trailing: @Composable () -> Unit = {}) = Row(
+    Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 0.dp),
+    verticalAlignment = Alignment.CenterVertically,
+) {
+    Text(
+        text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.weight(1f),
+    )
+    trailing()
+}
 
 @Composable
 private fun Hint(text: String) = Text(
