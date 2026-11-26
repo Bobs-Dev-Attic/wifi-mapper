@@ -7,6 +7,17 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-26
+### Added
+- **Sort drop-down on the Wi-Fi and Bluetooth lists** (Nearby signals). Wi-Fi:
+  signal strength (default, connected network first), name, distance, band &
+  channel, security, recently seen. Bluetooth: signal strength (default), name,
+  distance, maker, type (connectable first), recently seen. A reverse button flips
+  the order. Hidden networks / unnamed devices / unknown makers stay at the bottom
+  when sorting by that field, and ties go to the stronger signal. The choice is
+  kept while you switch tabs or rotate.
+- `ListSort` helper with unit tests.
+
 ## [0.14.0] - 2026-11-25
 ### Added
 - **Tracker blip vibration.** The phone buzzes the moment the ping wave reaches

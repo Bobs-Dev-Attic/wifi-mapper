@@ -72,7 +72,9 @@ floor spacing is in Settings.
 ## Finding a router or device (radar)
 
 **Nearby signals** (Wi-Fi icon on the home screen) lists Wi-Fi networks and Bluetooth
-LE devices; tap the locate icon to open the radar. Phone antennas can't sense
+LE devices; use the **Sort** drop-down to order them (signal, name, distance, channel,
+security, maker, type, recently seen; the arrows button reverses it), and tap the locate
+icon to open the radar. Phone antennas can't sense
 direction, so the radar uses a **body-shadow sweep**: hold the phone upright and turn
 slowly on the spot. Your body blocks 5–10 dB from behind, so the signal peaks when
 you face the source. The radar fits that peak from the whole circle and points to

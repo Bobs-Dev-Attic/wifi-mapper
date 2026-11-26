@@ -32,8 +32,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bobsdevattic.wifimapper.capture.BleDeviceInfo
 import com.bobsdevattic.wifimapper.capture.BleScanner
+import com.bobsdevattic.wifimapper.capture.BleSort
+import com.bobsdevattic.wifimapper.capture.ListSort
 import com.bobsdevattic.wifimapper.capture.WifiNetworkInfo
 import com.bobsdevattic.wifimapper.capture.WifiScanner
+import com.bobsdevattic.wifimapper.capture.WifiSort
 import com.bobsdevattic.wifimapper.model.SignalDetails
 import com.bobsdevattic.wifimapper.radar.RadarTarget
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -126,7 +129,9 @@ private fun WifiTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit) {
     val networks by vm.wifiNetworks.collectAsStateWithLifecycle()
     var band by rememberSaveable { mutableStateOf<String?>(null) }
     var throttled by remember { mutableStateOf(false) }
-    val shown = networks.filter { band == null || it.band == band }
+    var sort by rememberSaveable { mutableStateOf(WifiSort.SIGNAL) }
+    var reversed by rememberSaveable { mutableStateOf(false) }
+    val shown = ListSort.wifi(networks.filter { band == null || it.band == band }, sort, reversed)
 
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
@@ -146,11 +151,16 @@ private fun WifiTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit) {
             modifier = Modifier.padding(horizontal = 16.dp),
         )
     }
-    Text(
-        "${shown.size} networks",
-        style = MaterialTheme.typography.labelMedium,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-    )
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("${shown.size} networks", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+        SortMenu(
+            options = WifiSort.entries, selected = sort, label = { it.label }, reversed = reversed,
+            onSelect = { sort = it }, onToggleReverse = { reversed = !reversed },
+        )
+    }
     LazyColumn(Modifier.fillMaxSize()) {
         items(shown, key = { it.bssid }) { n ->
             ListItem(
@@ -194,7 +204,9 @@ private fun BleTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit, onRad
     val devices by vm.bleDevices.collectAsStateWithLifecycle()
     val status by vm.bleStatus.collectAsStateWithLifecycle()
     var namedOnly by rememberSaveable { mutableStateOf(false) }
-    val shown = devices.filter { !namedOnly || it.name != null }
+    var sort by rememberSaveable { mutableStateOf(BleSort.SIGNAL) }
+    var reversed by rememberSaveable { mutableStateOf(false) }
+    val shown = ListSort.ble(devices.filter { !namedOnly || it.name != null }, sort, reversed)
 
     when (val s = status) {
         BleScanner.Status.Off -> { Notice("Bluetooth is off. Turn it on in Quick Settings, then reopen this tab."); return }
@@ -209,6 +221,12 @@ private fun BleTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit, onRad
     ) {
         FilterChip(selected = namedOnly, onClick = { namedOnly = !namedOnly }, label = { Text("Named only") })
         Text("${shown.size} devices · live", style = MaterialTheme.typography.labelMedium)
+    }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
+        SortMenu(
+            options = BleSort.entries, selected = sort, label = { it.label }, reversed = reversed,
+            onSelect = { sort = it }, onToggleReverse = { reversed = !reversed },
+        )
     }
     Text(
         "Bluetooth LE devices (earbuds, watches, trackers, smart-home gear). Most phones " +
