@@ -63,6 +63,7 @@ class MeasurementRepository(private val dao: WifiMapperDao) {
     }
 
     fun observeSessions(): Flow<List<SessionEntity>> = dao.observeSessions()
+    fun observeSessionStats(): Flow<List<SessionStats>> = dao.observeSessionStats()
     suspend fun getSession(id: Long) = dao.getSession(id)
     fun observePoints(sessionId: Long): Flow<List<SamplePointWithReadings>> = dao.observePoints(sessionId)
     suspend fun getPoints(sessionId: Long) = dao.getPoints(sessionId)

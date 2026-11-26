@@ -43,6 +43,15 @@ interface WifiMapperDao {
     @Query("SELECT * FROM sessions ORDER BY createdAt DESC")
     fun observeSessions(): Flow<List<SessionEntity>>
 
+    /** Floor and point counts per map, for the home list (read-only; no schema change). */
+    @Query(
+        "SELECT s.id AS sessionId, " +
+            "(SELECT COUNT(*) FROM floors f WHERE f.sessionId = s.id) AS floors, " +
+            "(SELECT COUNT(*) FROM sample_points p WHERE p.sessionId = s.id) AS points " +
+            "FROM sessions s"
+    )
+    fun observeSessionStats(): Flow<List<SessionStats>>
+
     @Query("SELECT * FROM sessions WHERE id=:sessionId")
     suspend fun getSession(sessionId: Long): SessionEntity?
 
@@ -121,3 +130,5 @@ interface WifiMapperDao {
 
 /** Row type for [WifiMapperDao.observeFloorPointCounts]. */
 data class FloorPointCount(val floorId: Long?, val points: Int)
+
+data class SessionStats(val sessionId: Long, val floors: Int, val points: Int)
