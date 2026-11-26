@@ -6,6 +6,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.MobileOff
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -97,7 +101,11 @@ fun RadarScreen(
                     color = MaterialTheme.colorScheme.error)
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 RadarStyle.entries.forEach { st ->
                     FilterChip(
                         selected = style == st,
@@ -106,8 +114,20 @@ fun RadarScreen(
                     )
                 }
                 if (style == RadarStyle.TRACKER) {
-                    FilterChip(selected = ping, onClick = { vm.settings.setPingSound(!ping) }, label = { Text("Sound") })
-                    FilterChip(selected = buzz, onClick = { vm.settings.setPingVibrate(!buzz) }, label = { Text("Vibrate") })
+                    Spacer(Modifier.weight(1f))
+                    // Icon toggles: filled when on, outline + "off" glyph when off.
+                    FilledTonalIconToggleButton(checked = ping, onCheckedChange = vm.settings::setPingSound) {
+                        Icon(
+                            if (ping) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                            contentDescription = if (ping) "Sound on" else "Sound off",
+                        )
+                    }
+                    FilledTonalIconToggleButton(checked = buzz, onCheckedChange = vm.settings::setPingVibrate) {
+                        Icon(
+                            if (buzz) Icons.Default.Vibration else Icons.Default.MobileOff,
+                            contentDescription = if (buzz) "Vibration on" else "Vibration off",
+                        )
+                    }
                 }
             }
 
