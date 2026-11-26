@@ -7,6 +7,12 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-11-26
+### Changed
+- **Find my device: separate sort drop-downs.** "Your paired devices" and "Nearby
+  now" each get their own Sort menu in their section header (previously one menu
+  ordered both). Each is remembered separately between visits.
+
 ## [0.15.0] - 2026-11-26
 ### Added
 - **Sort drop-down on the Wi-Fi and Bluetooth lists** (Nearby signals). Wi-Fi:
