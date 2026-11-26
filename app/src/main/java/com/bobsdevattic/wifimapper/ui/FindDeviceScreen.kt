@@ -22,6 +22,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bobsdevattic.wifimapper.capture.BleDeviceInfo
 import com.bobsdevattic.wifimapper.capture.BleScanner
+import com.bobsdevattic.wifimapper.capture.BleSort
+import com.bobsdevattic.wifimapper.capture.ListSort
 import com.bobsdevattic.wifimapper.capture.PairedDevice
 import com.bobsdevattic.wifimapper.model.SignalDetails
 import com.bobsdevattic.wifimapper.radar.RadarTarget
@@ -34,6 +36,7 @@ import kotlinx.coroutines.flow.stateIn
 
 class FindDeviceViewModel(app: Application) : AndroidViewModel(app) {
     private val ble = BleScanner(app)
+    val settings = (app as com.bobsdevattic.wifimapper.WifiMapperApp).settings
 
     private val _paired = MutableStateFlow<List<PairedDevice>?>(emptyList())
     /** null = permission to read paired devices is missing. */
@@ -107,6 +110,10 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
     val paired by vm.paired.collectAsStateWithLifecycle()
     val nearby by vm.nearby.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
+    // One sort for both lists; paired devices not heard right now stay at the bottom.
+    val sortPref = vm.settings.findSort
+    val sort by sortPref.sort.collectAsStateWithLifecycle()
+    val reversed by sortPref.reversed.collectAsStateWithLifecycle()
 
     LazyColumn(Modifier.fillMaxSize()) {
         when (status) {
@@ -116,8 +123,16 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
             else -> {}
         }
 
+        item {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.End) {
+                SortMenu(
+                    options = BleSort.entries, selected = sort, label = { it.label }, reversed = reversed,
+                    onSelect = sortPref::select, onToggleReverse = sortPref::toggleReversed,
+                )
+            }
+        }
         item { SectionHeader("Your paired devices") }
-        val p = paired
+        val p = paired?.let { list -> ListSort.paired(list, { findHeard(it, nearby) }, sort, reversed) }
         when {
             p == null -> item { Hint("Grant the Bluetooth permission to see paired devices.") }
             p.isEmpty() -> item { Hint("No paired devices.") }
@@ -144,7 +159,7 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
         }
 
         item { SectionHeader("Nearby now") }
-        val others = nearby.sortedWith(compareBy<BleDeviceInfo> { it.name == null }.thenByDescending { it.rssi }).take(40)
+        val others = ListSort.ble(nearby, sort, reversed).take(40)
         if (others.isEmpty()) item { Hint("Listening for Bluetooth devices…") }
         items(others, key = { "n-" + it.address }) { d ->
             val target = RadarTarget.Ble(d.address, d.displayName, d.txPower)

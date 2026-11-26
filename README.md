@@ -72,7 +72,9 @@ floor spacing is in Settings.
 ## Finding a router or device (radar)
 
 **Nearby signals** (Wi-Fi icon on the home screen) lists Wi-Fi networks and Bluetooth
-LE devices; tap the locate icon to open the radar. Phone antennas can't sense
+LE devices; use the **Sort** drop-down to order them (signal, name, distance, channel,
+security, maker, type, recently seen; the arrows button reverses it), and tap the locate
+icon to open the radar. Phone antennas can't sense
 direction, so the radar uses a **body-shadow sweep**: hold the phone upright and turn
 slowly on the spot. Your body blocks 5–10 dB from behind, so the signal peaks when
 you face the source. The radar fits that peak from the whole circle and points to
@@ -117,7 +119,7 @@ readout) and a **classic** compass style. Switch on the radar screen or in Setti
 ## Find my Bluetooth device
 
 **Find my device** (Bluetooth icon on the home screen) lists your paired devices and
-everything advertising nearby. Tap a device's **radar icon** to jump straight to a radar
+everything advertising nearby (both lists can be ordered with the **Sort** drop-down). Tap a device's **radar icon** to jump straight to a radar
 sweep for its direction, or pick the row for a **hot/cold finder**: beeps and
 vibration speed up as you get closer, and a "strongest so far" marker warns if you
 walk past it. **Find direction** opens the radar sweep.
