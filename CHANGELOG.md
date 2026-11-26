@@ -7,6 +7,15 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-26
+### Added
+- **Sort drop-down on the saved 3D maps list** (home screen): newest (default),
+  name, most points, most floors, geo-anchored first, with the reverse button.
+  Ties go to the newer map. The choice is remembered between visits.
+- Each map row now shows its **floor and point counts** alongside the date.
+- `MapListSort` helper with unit tests; a read-only stats query (no database
+  schema change).
+
 ## [0.15.1] - 2026-11-26
 ### Changed
 - **Find my device: separate sort drop-downs.** "Your paired devices" and "Nearby

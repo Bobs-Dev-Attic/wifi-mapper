@@ -3,6 +3,7 @@ package com.bobsdevattic.wifimapper.settings
 import android.content.Context
 import com.bobsdevattic.wifimapper.capture.BleSort
 import com.bobsdevattic.wifimapper.capture.WifiSort
+import com.bobsdevattic.wifimapper.model.MapSort
 import com.bobsdevattic.wifimapper.model.DistanceUnit
 import com.bobsdevattic.wifimapper.viz.SignalPalette
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +37,7 @@ class AppSettings(context: Context) {
     val bleSort = SortPref(prefs, "sort_ble", BleSort.SIGNAL, BleSort.entries)
     val findSort = SortPref(prefs, "sort_find_device", BleSort.SIGNAL, BleSort.entries)   // Find my device → Nearby now
     val pairedSort = SortPref(prefs, "sort_paired", BleSort.SIGNAL, BleSort.entries)      // Find my device → paired
+    val mapSort = SortPref(prefs, "sort_maps", MapSort.NEWEST, MapSort.entries)            // home: saved maps
 
     private val _palette = MutableStateFlow(SignalPalette.fromName(prefs.getString(KEY_PALETTE, null)))
     val palette: StateFlow<SignalPalette> = _palette

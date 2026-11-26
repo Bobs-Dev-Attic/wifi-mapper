@@ -61,6 +61,12 @@ The **fusion and capture logic has no compile-time dependency on SceneView** —
 `ArCaptureSurface.kt` is the only AR-rendering file, so the pipeline is testable
 and resilient to SceneView API changes.
 
+## Your maps
+
+The home screen lists your saved 3D maps with their date, floor count and point
+count. Use the **Sort** drop-down to order them (newest, name, most points, most
+floors, geo-anchored first; the arrows button reverses it). The choice is remembered.
+
 ## Multiple floors
 
 Map one floor per pass. Before each pass, stand at a **reference spot you can find on

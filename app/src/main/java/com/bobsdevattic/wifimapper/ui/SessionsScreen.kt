@@ -21,6 +21,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.bobsdevattic.wifimapper.model.MapListSort
+import com.bobsdevattic.wifimapper.model.MapSort
 import com.bobsdevattic.wifimapper.update.UpdateBanner
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -37,7 +39,11 @@ fun SessionsScreen(
     onOpenAr: () -> Unit,
     vm: SessionsViewModel = viewModel(),
 ) {
-    val sessions by vm.sessions.collectAsStateWithLifecycle()
+    val all by vm.sessions.collectAsStateWithLifecycle()
+    val sortPref = vm.settings.mapSort
+    val sort by sortPref.sort.collectAsStateWithLifecycle()
+    val reversed by sortPref.reversed.collectAsStateWithLifecycle()
+    val sessions = MapListSort.sort(all, sort, reversed)
     val dateFmt = remember { SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()) }
 
     Scaffold(
@@ -80,14 +86,28 @@ fun SessionsScreen(
                     )
                 }
             } else {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "${sessions.size} map${if (sessions.size == 1) "" else "s"}",
+                        style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f),
+                    )
+                    SortMenu(
+                        options = MapSort.entries, selected = sort, label = { it.label }, reversed = reversed,
+                        onSelect = sortPref::select, onToggleReverse = sortPref::toggleReversed,
+                    )
+                }
                 LazyColumn(Modifier.fillMaxSize()) {
                     items(sessions, key = { it.id }) { s ->
                     ListItem(
                         headlineContent = { Text(s.name) },
                         supportingContent = {
-                            val geo = if (s.anchorLat != null)
-                                "geo-anchored" else "no GPS anchor"
-                            Text("${dateFmt.format(Date(s.createdAt))} · $geo")
+                            val geo = if (s.geoAnchored) "geo-anchored" else "no GPS anchor"
+                            val floors = "${s.floors} floor${if (s.floors == 1) "" else "s"}"
+                            val points = "${s.points} point${if (s.points == 1) "" else "s"}"
+                            Text("${dateFmt.format(Date(s.createdAt))} · $floors · $points · $geo")
                         },
                         trailingContent = {
                             IconButton(onClick = { vm.delete(s.id) }) {
