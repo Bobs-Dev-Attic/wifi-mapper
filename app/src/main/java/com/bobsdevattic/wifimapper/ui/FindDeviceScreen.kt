@@ -5,7 +5,6 @@ import android.app.Application
 import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -37,6 +36,7 @@ import kotlinx.coroutines.flow.stateIn
 
 class FindDeviceViewModel(app: Application) : AndroidViewModel(app) {
     private val ble = BleScanner(app)
+    val settings = (app as com.bobsdevattic.wifimapper.WifiMapperApp).settings
 
     private val _paired = MutableStateFlow<List<PairedDevice>?>(emptyList())
     /** null = permission to read paired devices is missing. */
@@ -111,8 +111,9 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
     val nearby by vm.nearby.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
     // One sort for both lists; paired devices not heard right now stay at the bottom.
-    var sort by rememberSaveable { mutableStateOf(BleSort.SIGNAL) }
-    var reversed by rememberSaveable { mutableStateOf(false) }
+    val sortPref = vm.settings.findSort
+    val sort by sortPref.sort.collectAsStateWithLifecycle()
+    val reversed by sortPref.reversed.collectAsStateWithLifecycle()
 
     LazyColumn(Modifier.fillMaxSize()) {
         when (status) {
@@ -126,7 +127,7 @@ private fun DeviceLists(vm: FindDeviceViewModel, onFind: (RadarTarget.Ble) -> Un
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.End) {
                 SortMenu(
                     options = BleSort.entries, selected = sort, label = { it.label }, reversed = reversed,
-                    onSelect = { sort = it }, onToggleReverse = { reversed = !reversed },
+                    onSelect = sortPref::select, onToggleReverse = sortPref::toggleReversed,
                 )
             }
         }

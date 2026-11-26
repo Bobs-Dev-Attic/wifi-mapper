@@ -50,6 +50,7 @@ import kotlinx.coroutines.flow.stateIn
 class NetworksViewModel(app: Application) : AndroidViewModel(app) {
     private val wifi = WifiScanner(app)
     private val ble = BleScanner(app)
+    val settings = (app as com.bobsdevattic.wifimapper.WifiMapperApp).settings
 
     val wifiNetworks: StateFlow<List<WifiNetworkInfo>> = wifi.detailedScanResults()
         .map { list -> list.sortedWith(compareByDescending<WifiNetworkInfo> { it.connected }.thenByDescending { it.rssi }) }
@@ -129,8 +130,9 @@ private fun WifiTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit) {
     val networks by vm.wifiNetworks.collectAsStateWithLifecycle()
     var band by rememberSaveable { mutableStateOf<String?>(null) }
     var throttled by remember { mutableStateOf(false) }
-    var sort by rememberSaveable { mutableStateOf(WifiSort.SIGNAL) }
-    var reversed by rememberSaveable { mutableStateOf(false) }
+    val sortPref = vm.settings.wifiSort
+    val sort by sortPref.sort.collectAsStateWithLifecycle()
+    val reversed by sortPref.reversed.collectAsStateWithLifecycle()
     val shown = ListSort.wifi(networks.filter { band == null || it.band == band }, sort, reversed)
 
     Row(
@@ -158,7 +160,7 @@ private fun WifiTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit) {
         Text("${shown.size} networks", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
         SortMenu(
             options = WifiSort.entries, selected = sort, label = { it.label }, reversed = reversed,
-            onSelect = { sort = it }, onToggleReverse = { reversed = !reversed },
+            onSelect = sortPref::select, onToggleReverse = sortPref::toggleReversed,
         )
     }
     LazyColumn(Modifier.fillMaxSize()) {
@@ -204,8 +206,9 @@ private fun BleTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit, onRad
     val devices by vm.bleDevices.collectAsStateWithLifecycle()
     val status by vm.bleStatus.collectAsStateWithLifecycle()
     var namedOnly by rememberSaveable { mutableStateOf(false) }
-    var sort by rememberSaveable { mutableStateOf(BleSort.SIGNAL) }
-    var reversed by rememberSaveable { mutableStateOf(false) }
+    val sortPref = vm.settings.bleSort
+    val sort by sortPref.sort.collectAsStateWithLifecycle()
+    val reversed by sortPref.reversed.collectAsStateWithLifecycle()
     val shown = ListSort.ble(devices.filter { !namedOnly || it.name != null }, sort, reversed)
 
     when (val s = status) {
@@ -225,7 +228,7 @@ private fun BleTab(vm: NetworksViewModel, onLocate: (RadarTarget) -> Unit, onRad
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
         SortMenu(
             options = BleSort.entries, selected = sort, label = { it.label }, reversed = reversed,
-            onSelect = { sort = it }, onToggleReverse = { reversed = !reversed },
+            onSelect = sortPref::select, onToggleReverse = sortPref::toggleReversed,
         )
     }
     Text(

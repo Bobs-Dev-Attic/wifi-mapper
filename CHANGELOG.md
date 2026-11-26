@@ -14,8 +14,8 @@ All notable changes to WiFi Mapper are documented here. The format follows
   channel, security, recently seen. Bluetooth: signal strength (default), name,
   distance, maker, type (connectable first), recently seen. A reverse button flips
   the order. Hidden networks / unnamed devices / unknown makers stay at the bottom
-  when sorting by that field, and ties go to the stronger signal. The choice is
-  kept while you switch tabs or rotate.
+  when sorting by that field, and ties go to the stronger signal. **Each list
+  remembers its sort choice between visits** (and app restarts).
 - The same **Sort** drop-down on **Find my device**, ordering both "Your paired
   devices" and "Nearby now". Paired devices sort by their live signal; ones not
   heard right now stay at the bottom (by name sort, all are ordered A→Z).
