@@ -7,6 +7,13 @@ All notable changes to WiFi Mapper are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-11-26
+### Changed
+- **Radar tracker: Sound and Vibrate are now icon toggles** (speaker / vibrate),
+  right-aligned beside the Tracker/Classic chips. Filled when on; when off they
+  switch to the speaker-off and vibrate-off icons. Screen readers announce
+  "Sound on/off" and "Vibration on/off".
+
 ## [0.16.0] - 2026-11-26
 ### Added
 - **Sort drop-down on the saved 3D maps list** (home screen): newest (default),
